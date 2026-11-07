@@ -27,6 +27,8 @@ public class PlayerController : MonoBehaviour
     private SphereCollider _sphere;
     private Vector3 _moveInput;
     private bool _jumpRequested;
+    private float _speedMultiplier = 1f;
+    private float _boostUntil;
 
     /// <summary>Стоит ли шар на поверхности.</summary>
     public bool IsGrounded { get; private set; }
@@ -45,6 +47,17 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    /// <summary>Сколько секунд осталось у ускорения (0 — ускорения нет).</summary>
+    public float SpeedBoostTimeLeft => Mathf.Max(0f, _boostUntil - Time.time);
+    public bool IsBoosted => SpeedBoostTimeLeft > 0f;
+
+    /// <summary>Временно увеличить ускорение и предел скорости (предмет «Ускоритель»).</summary>
+    public void ApplySpeedBoost(float multiplier, float duration)
+    {
+        _speedMultiplier = Mathf.Max(1f, multiplier);
+        _boostUntil = Time.time + duration;
+    }
+
     /// <summary>Расстояние от центра шара до его нижней точки.</summary>
     public float GroundOffset => _sphere != null ? _sphere.radius * transform.lossyScale.y : 0.5f;
 
@@ -59,6 +72,12 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
+        if (GamePause.IsPaused)
+        {
+            _moveInput = Vector3.zero;
+            return;
+        }
+
         float h = Input.GetAxisRaw("Horizontal");
         float v = Input.GetAxisRaw("Vertical");
 
@@ -81,6 +100,8 @@ public class PlayerController : MonoBehaviour
         IsGrounded = Physics.Raycast(transform.position, Vector3.down,
             GroundOffset + groundCheckExtra, ~0, QueryTriggerInteraction.Ignore);
 
+        float multiplier = IsBoosted ? _speedMultiplier : 1f;
+
         if (_moveInput.sqrMagnitude > 0.0001f)
         {
             Vector3 horizontal = _rb.velocity;
@@ -88,8 +109,8 @@ public class PlayerController : MonoBehaviour
 
             // Разгоняемся, пока скорость в направлении ввода меньше предела
             float speedAlongInput = Vector3.Dot(horizontal, _moveInput.normalized);
-            if (speedAlongInput < maxSpeed)
-                _rb.AddForce(_moveInput * acceleration, ForceMode.Acceleration);
+            if (speedAlongInput < maxSpeed * multiplier)
+                _rb.AddForce(_moveInput * (acceleration * multiplier), ForceMode.Acceleration);
         }
 
         if (_jumpRequested && IsGrounded)

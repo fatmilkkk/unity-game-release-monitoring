@@ -21,7 +21,13 @@ public class PlayerHealth : MonoBehaviour
 
     [Header("Гибель")]
     [SerializeField] private GameObject deathEffectPrefab;
+    [Tooltip("Перезапускать уровень автоматически. Выключено, если экран поражения показывает интерфейс")]
+    [SerializeField] private bool autoRestart = true;
     [SerializeField] private float restartDelay = 2.5f;
+
+    [Header("Щит")]
+    [Tooltip("Объект, который показывается, пока активен щит")]
+    [SerializeField] private GameObject shieldVisual;
 
     [Header("Визуальный отклик")]
     [SerializeField] private Renderer bodyRenderer;
@@ -31,6 +37,8 @@ public class PlayerHealth : MonoBehaviour
     public int MaxHealth => maxHealth;
     public int CurrentHealth { get; private set; }
     public bool IsDead { get; private set; }
+    public bool IsShielded => Time.time < _shieldUntil;
+    public float ShieldTimeLeft => Mathf.Max(0f, _shieldUntil - Time.time);
     public bool IsLowHealth => CurrentHealth <= Mathf.CeilToInt(maxHealth * lowHealthThreshold);
 
     /// <summary>(текущее HP, максимальное HP)</summary>
@@ -38,6 +46,7 @@ public class PlayerHealth : MonoBehaviour
     public event Action Died;
 
     private float _lastDamageTime = -999f;
+    private float _shieldUntil;
     private Material _material;
     private Color _baseColor;
     private Coroutine _flashRoutine;
@@ -65,7 +74,22 @@ public class PlayerHealth : MonoBehaviour
     private void Update()
     {
         if (!IsDead && transform.position.y < killHeight)
-            Kill();
+            Kill(true);
+
+        if (shieldVisual != null)
+        {
+            bool visible = !IsDead && IsShielded;
+            if (shieldVisual.activeSelf != visible)
+                shieldVisual.SetActive(visible);
+        }
+    }
+
+    /// <summary>Включить щит: пока он активен, игрок не получает урон.</summary>
+    public void GrantShield(float duration)
+    {
+        if (IsDead)
+            return;
+        _shieldUntil = Mathf.Max(_shieldUntil, Time.time + duration);
     }
 
     /// <summary>Нанести урон. Возвращает true, если урон был применён.</summary>
@@ -74,7 +98,7 @@ public class PlayerHealth : MonoBehaviour
         if (IsDead || amount <= 0)
             return false;
 
-        if (Time.time - _lastDamageTime < invulnerabilityTime)
+        if (IsShielded || Time.time - _lastDamageTime < invulnerabilityTime)
             return false;
 
         _lastDamageTime = Time.time;
@@ -98,10 +122,13 @@ public class PlayerHealth : MonoBehaviour
         HealthChanged?.Invoke(CurrentHealth, maxHealth);
     }
 
-    /// <summary>Мгновенное уничтожение игрока (например, взрыв бочки).</summary>
-    public void Kill()
+    /// <summary>
+    /// Мгновенное уничтожение игрока (например, взрыв бочки).
+    /// Активный щит спасает, если ignoreShield = false.
+    /// </summary>
+    public void Kill(bool ignoreShield = false)
     {
-        if (IsDead)
+        if (IsDead || (IsShielded && !ignoreShield))
             return;
 
         CurrentHealth = 0;
@@ -134,13 +161,15 @@ public class PlayerHealth : MonoBehaviour
             rend.enabled = false;
 
         Died?.Invoke();
-        StartCoroutine(RestartAfterDelay());
+        if (autoRestart)
+            StartCoroutine(RestartAfterDelay());
     }
 
     private IEnumerator RestartAfterDelay()
     {
         yield return new WaitForSeconds(restartDelay);
         Scene scene = SceneManager.GetActiveScene();
+        GamePause.Reset();
         SceneManager.LoadScene(scene.buildIndex >= 0 ? scene.buildIndex : 0);
     }
 

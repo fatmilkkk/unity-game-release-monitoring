@@ -12,11 +12,12 @@
 1. Склонировать репозиторий.
 2. В Unity Hub выбрать **Add → Add project from disk** и указать папку проекта.
    Открыть в Unity 2022.3.x (подойдёт любая 2022.3 LTS).
-3. При первом открытии сцена **`Assets/Scenes/Main.unity` собирается автоматически**
-   скриптом `Assets/Editor/DemoSceneBuilder.cs`. Вместе со сценой создаются материалы, префабы,
-   анимации и контроллер анимации бонуса.
-   Пересобрать сцену вручную можно через меню **Tools → Portfolio Demo → Build Demo Scene**.
-4. Нажать **Play**.
+3. При первом открытии сцены **`Assets/Scenes/MainMenu.unity`** (главное меню) и **`Assets/Scenes/Main.unity`** (уровень)
+   **собираются автоматически** скриптом `Assets/Editor/DemoSceneBuilder.cs` (+ `DemoSceneBuilder.UI.cs`).
+   Вместе со сценами создаются материалы, префабы, анимации, контроллер анимации бонуса и спрайты интерфейса.
+   Если код сборщика обновился, при следующем открытии проекта сцены пересоберутся сами.
+   Пересобрать сцены вручную можно через меню **Tools → Portfolio Demo → Build Demo Scene**.
+4. Открыть сцену `MainMenu` и нажать **Play**.
 
 ## Управление
 
@@ -24,6 +25,9 @@
 |---|---|
 | WASD / стрелки | Движение (относительно камеры) |
 | Пробел | Прыжок |
+| 1 / 2 / 3 | Использовать аптечку / щит / ускоритель |
+| I или Tab | Инвентарь |
+| Esc | Пауза / назад |
 
 ## Что реализовано
 
@@ -75,16 +79,39 @@
 
 Ещё есть эффекты сбора монеты, взрыва (огонь, дым, искры, вспышка света) и гибели игрока.
 
+### 6. Пользовательский интерфейс (кейс-задача № 3)
+- **Главное меню**: 3D-фон с облётом камеры, анимированный заголовок, поочерёдное появление кнопок,
+  баланс кошелька, плавный переход в игру. Окна «Управление» и «Настройки».
+- **HUD**: кошелёк, полоса HP (плавная, со «следом» урона, тряской и миганием при низком HP),
+  активные эффекты, таймер, счётчики монет уровня и бонусов, панель быстрого доступа (1/2/3), подсказки.
+- **Пауза** (Esc): продолжить, инвентарь, управление, настройки, заново, главное меню. Время игры останавливается.
+- **Инвентарь** (I/Tab): сетка ячеек, описание предмета, кнопка «Использовать». Предметы выдают бонусы:
+  аптечка, щит, ускоритель.
+- **Настройки**: громкость, полноэкранный режим, подсказки, сброс кошелька (с подтверждением). Сохраняются в PlayerPrefs.
+- **Экраны поражения и победы** со статистикой; на экране победы звёзды загораются по очереди.
+- **Уведомления**: очередь сообщений, выезжающих справа.
+- **Анимации**: `UIPanel` (5 типов появления), `UIButtonFeedback` (наведение/нажатие + звук),
+  `UIStaggerReveal`, `UIFloatAnimation`, `UIPunch`, полёт монеты в кошелёк по кривой Безье.
+  Все анимации идут в нескалированном времени и работают на паузе.
+- Подробный анализ: [`Docs/Case3_UI_Analysis.md`](Docs/Case3_UI_Analysis.md).
+
 ## Структура
 
 ```
 Assets/
-  Editor/DemoSceneBuilder.cs     — сборка сцены, префабов, анимаций, частиц
+  Editor/DemoSceneBuilder.cs     — сборка сцен, префабов, анимаций, частиц
+  Editor/DemoSceneBuilder.UI.cs  — сборка интерфейса (меню, HUD, окна)
   Scripts/
+    Core/        GamePause, GameSettings
     Player/      PlayerController, PlayerHealth
     Collectables/Coin, Wallet
+    Items/       ItemType (ItemDatabase), Inventory
+    Level/       LevelStats
     Bonus/       BonusZone
     Obstacles/   ExplosiveBarrel, MovingObstacle
-    Effects/     PlayerMovementParticles, AutoDestroy
-    UI/          WalletUI, HealthUI
+    Effects/     PlayerMovementParticles, AutoDestroy, SimpleRotator
+    UI/          GameUIController, MainMenuController, HealthUI, WalletUI, CountersUI,
+                 ToastUI, CoinFlyUI, SettingsPanel
+    UI/Core/     UIPanel, UIButtonFeedback, UIStaggerReveal, UIFloatAnimation, UIPunch, UIEasing, UISound
+    UI/Inventory/InventoryUI, InventorySlotUI, HotbarUI
 ```

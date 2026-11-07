@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 /// <summary>
@@ -7,6 +8,9 @@ using UnityEngine;
 [RequireComponent(typeof(Collider))]
 public class Coin : MonoBehaviour
 {
+    /// <summary>Монета собрана (монета, мировая позиция). Используется счётчиками и анимацией интерфейса.</summary>
+    public static event Action<Coin, Vector3> Collected;
+
     [SerializeField] private int value = 1;
 
     [Header("Анимация на месте")]
@@ -25,7 +29,7 @@ public class Coin : MonoBehaviour
     {
         GetComponent<Collider>().isTrigger = true;
         _startPosition = transform.position;
-        _bobOffset = Random.value * Mathf.PI * 2f; // чтобы монеты качались не синхронно
+        _bobOffset = UnityEngine.Random.value * Mathf.PI * 2f; // чтобы монеты качались не синхронно
     }
 
     private void Update()
@@ -46,6 +50,7 @@ public class Coin : MonoBehaviour
 
         _collected = true;
         wallet.AddCoins(value);
+        Collected?.Invoke(this, transform.position);
 
         if (pickupEffectPrefab != null)
             Instantiate(pickupEffectPrefab, transform.position, Quaternion.identity);

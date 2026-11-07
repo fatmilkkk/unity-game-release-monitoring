@@ -28,6 +28,15 @@ public class Wallet : MonoBehaviour
         CoinsChanged?.Invoke(Coins);
     }
 
+    /// <summary>Баланс, сохранённый между запусками (для главного меню).</summary>
+    public static int GetSavedCoins() => PlayerPrefs.GetInt(SaveKey, 0);
+
+    public static void ClearSaved()
+    {
+        PlayerPrefs.DeleteKey(SaveKey);
+        PlayerPrefs.Save();
+    }
+
     public void AddCoins(int amount)
     {
         if (amount <= 0)

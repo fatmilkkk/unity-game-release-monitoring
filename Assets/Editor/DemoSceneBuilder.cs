@@ -14,9 +14,14 @@ using UnityEngine.UI;
 /// Запускается автоматически при первом открытии проекта (если сцены ещё нет)
 /// или вручную: меню Tools → Portfolio Demo → Build Demo Scene.
 /// </summary>
-public static class DemoSceneBuilder
+public static partial class DemoSceneBuilder
 {
     public const string ScenePath = "Assets/Scenes/Main.unity";
+    public const string MenuScenePath = "Assets/Scenes/MainMenu.unity";
+
+    /// <summary>Версия сборки сцен. При увеличении сцены пересобираются автоматически.</summary>
+    public const int BuildVersion = 2;
+    public const string BuildVersionFile = "Library/PortfolioDemoBuildVersion.txt";
 
     private const string MaterialsFolder = "Assets/Materials";
     private const string PrefabsFolder = "Assets/Prefabs";
@@ -60,7 +65,8 @@ public static class DemoSceneBuilder
             Pedestal = CreateLitMaterial("Pedestal", new Color(0.55f, 0.55f, 0.6f), 0.2f, 0.5f),
             Gem = CreateLitMaterial("BonusGem", new Color(0.2f, 1f, 0.75f), 0.1f, 0.9f, new Color(0f, 0.6f, 0.45f)),
             Ramp = CreateLitMaterial("Ramp", new Color(0.95f, 0.6f, 0.15f), 0f, 0.3f),
-            Zone = CreateUnlitTransparentMaterial("BonusZone", new Color(0.2f, 1f, 0.8f, 0.18f))
+            Zone = CreateUnlitTransparentMaterial("BonusZone", new Color(0.2f, 1f, 0.8f, 0.18f)),
+            Shield = CreateUnlitTransparentMaterial("ShieldBubble", new Color(0.35f, 0.7f, 1f, 0.25f))
         };
 
         Texture2D softTexture = CreateSoftParticleTexture();
@@ -84,27 +90,46 @@ public static class DemoSceneBuilder
         var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
 
         BuildEnvironment(mats);
-        GameObject player = CreatePlayer(mats, deathFx, out PlayerController controller, out PlayerHealth health, out Wallet wallet);
+        GameObject player = CreatePlayer(mats, deathFx, out PlayerController controller, out PlayerHealth health,
+            out Wallet wallet, out Inventory inventory);
         CreateMovementParticles(controller, health, particleAlpha, particleAdditive);
         SetupCameras(player.transform, controller);
         PlaceCoins(coinPrefab);
         PlaceBonuses(bonusPrefab);
         PlaceMovingObstacles(mats);
         PlaceBarrels(barrelPrefab);
-        CreateHud(health, wallet);
+        var statsGo = new GameObject("LevelStats");
+        var stats = statsGo.AddComponent<LevelStats>();
+        SetRef(stats, "playerHealth", health);
+
+        UISprites sprites = CreateUISprites();
+        CreateGameUI(sprites, health, wallet, inventory, controller, stats);
 
         EditorSceneManager.SaveScene(scene, ScenePath);
-        EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
+
+        // Сцена главного меню
+        var menuScene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+        BuildMenuScene(sprites, coinPrefab, bonusPrefab, barrelPrefab);
+        EditorSceneManager.SaveScene(menuScene, MenuScenePath);
+
+        EditorBuildSettings.scenes = new[]
+        {
+            new EditorBuildSettingsScene(MenuScenePath, true),
+            new EditorBuildSettingsScene(ScenePath, true)
+        };
+        File.WriteAllText(BuildVersionFile, BuildVersion.ToString());
+
+        EditorSceneManager.OpenScene(MenuScenePath);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
-        Debug.Log("[Portfolio Demo] Сцена собрана: " + ScenePath + ". Нажмите Play.");
+        Debug.Log("[Portfolio Demo] Сцены собраны: " + MenuScenePath + " и " + ScenePath + ". Нажмите Play.");
     }
 
     private class Materials
     {
         public Material Ground, Wall, Player, PlayerStripe, Gold, Hazard, HazardDark,
-            Barrel, BarrelBand, Pedestal, Gem, Ramp, Zone;
+            Barrel, BarrelBand, Pedestal, Gem, Ramp, Zone, Shield;
     }
 
     // ───────────────────────────── Папки и ассеты ─────────────────────────────
@@ -188,6 +213,15 @@ public static class DemoSceneBuilder
         var p = FindProp(so, field);
         if (p == null) return;
         p.intValue = value;
+        so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void SetBool(Object target, string field, bool value)
+    {
+        var so = new SerializedObject(target);
+        var p = FindProp(so, field);
+        if (p == null) return;
+        p.boolValue = value;
         so.ApplyModifiedPropertiesWithoutUndo();
     }
 
@@ -777,7 +811,7 @@ public static class DemoSceneBuilder
     }
 
     private static GameObject CreatePlayer(Materials mats, GameObject deathFx,
-        out PlayerController controller, out PlayerHealth health, out Wallet wallet)
+        out PlayerController controller, out PlayerHealth health, out Wallet wallet, out Inventory inventory)
     {
         GameObject player = GameObject.CreatePrimitive(PrimitiveType.Sphere); // SphereCollider r = 0.5
         player.name = "Player";
@@ -803,6 +837,17 @@ public static class DemoSceneBuilder
 
         SetRef(health, "deathEffectPrefab", deathFx);
         SetRef(health, "bodyRenderer", player.GetComponent<Renderer>());
+        SetBool(health, "autoRestart", false); // экран поражения показывает GameUIController
+
+        // Сфера щита (видна, пока действует предмет «Щит»)
+        GameObject shield = CreatePrimitiveChild(PrimitiveType.Sphere, "ShieldBubble", player.transform, mats.Shield,
+            Vector3.zero, Vector3.one * 1.6f, Vector3.zero, false);
+        shield.SetActive(false);
+        SetRef(health, "shieldVisual", shield);
+
+        inventory = player.AddComponent<Inventory>();
+        SetRef(inventory, "health", health);
+        SetRef(inventory, "controller", controller);
         return player;
     }
 
@@ -905,9 +950,17 @@ public static class DemoSceneBuilder
     private static void PlaceBonuses(GameObject bonusPrefab)
     {
         var parent = new GameObject("Bonuses").transform;
-        Spawn(bonusPrefab, new Vector3(-9f, 0f, 4f), parent);
-        Spawn(bonusPrefab, new Vector3(9f, 0f, 4f), parent);
-        Spawn(bonusPrefab, new Vector3(-12f, 0f, 27f), parent);
+        SetBonusReward(Spawn(bonusPrefab, new Vector3(-9f, 0f, 4f), parent), ItemType.Medkit);
+        SetBonusReward(Spawn(bonusPrefab, new Vector3(9f, 0f, 4f), parent), ItemType.Shield);
+        SetBonusReward(Spawn(bonusPrefab, new Vector3(-12f, 0f, 27f), parent), ItemType.SpeedBoost);
+        SetBonusReward(Spawn(bonusPrefab, new Vector3(12f, 0f, 27f), parent), ItemType.Medkit);
+    }
+
+    private static void SetBonusReward(GameObject bonus, ItemType item)
+    {
+        var zone = bonus.GetComponent<BonusZone>();
+        SetEnum(zone, "rewardItem", (int)item);
+        bonus.name = "Bonus_" + item;
     }
 
     private static void PlaceMovingObstacles(Materials mats)
@@ -980,111 +1033,12 @@ public static class DemoSceneBuilder
         Spawn(barrelPrefab, new Vector3(-9f, y, 36f), parent);
     }
 
-    // ───────────────────────────── Интерфейс ─────────────────────────────
-
-    private static Font UIFont()
-    {
-        Font font = null;
-        try { font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); }
-        catch { /* старые версии Unity */ }
-        if (font == null)
-        {
-            try { font = Resources.GetBuiltinResource<Font>("Arial.ttf"); }
-            catch { /* новые версии Unity */ }
-        }
-        return font;
-    }
-
-    private static RectTransform NewRect(string name, Transform parent, Vector2 anchor, Vector2 pivot,
-        Vector2 position, Vector2 size)
-    {
-        var go = new GameObject(name, typeof(RectTransform));
-        go.transform.SetParent(parent, false);
-        var rt = (RectTransform)go.transform;
-        rt.anchorMin = anchor;
-        rt.anchorMax = anchor;
-        rt.pivot = pivot;
-        rt.anchoredPosition = position;
-        rt.sizeDelta = size;
-        return rt;
-    }
-
-    private static Text NewText(string name, Transform parent, string content, int fontSize, TextAnchor alignment,
-        Vector2 anchor, Vector2 pivot, Vector2 position, Vector2 size)
-    {
-        RectTransform rt = NewRect(name, parent, anchor, pivot, position, size);
-        var text = rt.gameObject.AddComponent<Text>();
-        text.font = UIFont();
-        text.text = content;
-        text.fontSize = fontSize;
-        text.alignment = alignment;
-        text.color = Color.white;
-        text.horizontalOverflow = HorizontalWrapMode.Overflow;
-        text.verticalOverflow = VerticalWrapMode.Overflow;
-        var shadow = rt.gameObject.AddComponent<Shadow>();
-        shadow.effectDistance = new Vector2(2f, -2f);
-        shadow.effectColor = new Color(0f, 0f, 0f, 0.7f);
-        return text;
-    }
-
-    private static void CreateHud(PlayerHealth health, Wallet wallet)
-    {
-        var canvasGo = new GameObject("HUD", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-        var canvas = canvasGo.GetComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        var scaler = canvasGo.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.matchWidthOrHeight = 0.5f;
-        Transform root = canvasGo.transform;
-
-        Vector2 topLeft = new Vector2(0f, 1f);
-
-        // Кошелёк
-        Text coinsText = NewText("CoinsText", root, "Монеты: 0", 44, TextAnchor.MiddleLeft,
-            topLeft, topLeft, new Vector2(40f, -30f), new Vector2(500f, 60f));
-        coinsText.color = new Color(1f, 0.85f, 0.25f);
-        var walletUi = canvasGo.AddComponent<WalletUI>();
-        SetRef(walletUi, "wallet", wallet);
-        SetRef(walletUi, "label", coinsText);
-
-        // Полоса здоровья
-        RectTransform barBg = NewRect("HealthBar", root, topLeft, topLeft, new Vector2(40f, -105f), new Vector2(420f, 34f));
-        barBg.gameObject.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.55f);
-
-        RectTransform fill = NewRect("Fill", barBg, Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
-        fill.anchorMin = Vector2.zero;
-        fill.anchorMax = Vector2.one;
-        fill.offsetMin = Vector2.zero;
-        fill.offsetMax = Vector2.zero;
-        var fillImage = fill.gameObject.AddComponent<Image>();
-        fillImage.color = new Color(0.3f, 0.85f, 0.35f);
-
-        Text hpText = NewText("HealthText", barBg, "HP: 100/100", 26, TextAnchor.MiddleCenter,
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(420f, 34f));
-
-        // Сообщение о гибели
-        Text deathText = NewText("DeathMessage", root, "Вы уничтожены!\nПерезапуск уровня...", 64, TextAnchor.MiddleCenter,
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1000f, 200f));
-        deathText.color = new Color(1f, 0.3f, 0.25f);
-
-        var healthUi = canvasGo.AddComponent<HealthUI>();
-        SetRef(healthUi, "health", health);
-        SetRef(healthUi, "label", hpText);
-        SetRef(healthUi, "fillBar", fill);
-        SetRef(healthUi, "fillImage", fillImage);
-        SetRef(healthUi, "deathMessage", deathText.gameObject);
-
-        // Подсказка по управлению
-        NewText("Hint", root,
-            "WASD / стрелки — движение   •   Пробел — прыжок\n" +
-            "Собирайте монеты  •  Подойдите к бонусу  •  Избегайте красных препятствий  •  Не врезайтесь в бочки на скорости!",
-            24, TextAnchor.LowerCenter,
-            new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 25f), new Vector2(1800f, 80f));
-    }
 }
 
-/// <summary>Автоматически собирает демо-сцену при первом открытии проекта.</summary>
+/// <summary>
+/// Автоматически собирает демо-сцены при первом открытии проекта
+/// или если код сборки обновился (BuildVersion больше сохранённой).
+/// </summary>
 [InitializeOnLoad]
 internal static class DemoSceneAutoBuilder
 {
@@ -1097,6 +1051,18 @@ internal static class DemoSceneAutoBuilder
         EditorApplication.delayCall += TryBuild;
     }
 
+    private static int StoredVersion()
+    {
+        try
+        {
+            if (File.Exists(DemoSceneBuilder.BuildVersionFile) &&
+                int.TryParse(File.ReadAllText(DemoSceneBuilder.BuildVersionFile).Trim(), out int v))
+                return v;
+        }
+        catch (IOException) { }
+        return 0;
+    }
+
     private static void TryBuild()
     {
         if (EditorApplication.isCompiling || EditorApplication.isUpdating || EditorApplication.isPlayingOrWillChangePlaymode)
@@ -1107,14 +1073,15 @@ internal static class DemoSceneAutoBuilder
 
         SessionState.SetBool(SessionKey, true);
 
-        if (File.Exists(DemoSceneBuilder.ScenePath))
+        bool scenesExist = File.Exists(DemoSceneBuilder.ScenePath) && File.Exists(DemoSceneBuilder.MenuScenePath);
+        if (scenesExist && StoredVersion() >= DemoSceneBuilder.BuildVersion)
         {
-            // Сцена есть — просто откроем её, если сейчас открыта пустая безымянная сцена
             if (string.IsNullOrEmpty(EditorSceneManager.GetActiveScene().path))
-                EditorSceneManager.OpenScene(DemoSceneBuilder.ScenePath);
+                EditorSceneManager.OpenScene(DemoSceneBuilder.MenuScenePath);
             return;
         }
 
+        Debug.Log("[Portfolio Demo] Собираю сцены (версия сборки " + DemoSceneBuilder.BuildVersion + ")...");
         DemoSceneBuilder.Build();
     }
 }

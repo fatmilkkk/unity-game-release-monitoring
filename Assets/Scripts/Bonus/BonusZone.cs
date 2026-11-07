@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -6,6 +7,7 @@ using UnityEngine.Events;
 /// PlayerInZone = true (бонус «оживает»: Idle → Activate → Active),
 /// при выходе — PlayerInZone = false (Active → Deactivate → Idle).
 /// Сами состояния и переходы настроены в машине состояний BonusAnimator.controller.
+/// При первом входе бонус кладёт в инвентарь игрока предмет-награду.
 /// </summary>
 [RequireComponent(typeof(Collider))]
 public class BonusZone : MonoBehaviour
@@ -14,14 +16,25 @@ public class BonusZone : MonoBehaviour
     [Tooltip("Имя bool-параметра в Animator")]
     [SerializeField] private string inZoneParameter = "PlayerInZone";
 
+    [Header("Награда")]
+    [SerializeField] private bool giveReward = true;
+    [SerializeField] private ItemType rewardItem = ItemType.Medkit;
+
     [Header("События (по желанию)")]
     [SerializeField] private UnityEvent onPlayerEnter;
     [SerializeField] private UnityEvent onPlayerExit;
 
+    /// <summary>Игрок получил награду бонуса (бонус, предмет).</summary>
+    public static event Action<BonusZone, ItemType> RewardGiven;
+
     private int _parameterHash;
+    private bool _rewardGiven;
     private int _playersInside;
 
     public bool PlayerInside => _playersInside > 0;
+    public bool GivesReward => giveReward;
+    public bool RewardCollected => _rewardGiven;
+    public ItemType RewardItem => rewardItem;
 
     private void Reset()
     {
@@ -50,6 +63,21 @@ public class BonusZone : MonoBehaviour
                 animator.SetBool(_parameterHash, true);
             onPlayerEnter?.Invoke();
         }
+
+        TryGiveReward(other);
+    }
+
+    private void TryGiveReward(Collider other)
+    {
+        if (!giveReward || _rewardGiven)
+            return;
+
+        var inventory = other.GetComponentInParent<Inventory>();
+        if (inventory == null || !inventory.Add(rewardItem))
+            return;
+
+        _rewardGiven = true;
+        RewardGiven?.Invoke(this, rewardItem);
     }
 
     private void OnTriggerExit(Collider other)
