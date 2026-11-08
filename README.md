@@ -1,11 +1,14 @@
-# Unity Portfolio Game — «Шар-собиратель»
+# Unity Portfolio Game — «Шар-собиратель» (тестирование и оптимизация)
+
+> Версия проекта для кейс-задачи № 4: автотесты, исправление ошибок, оптимизация и адаптация под устройства.
+> Подробный отчёт: [`Docs/Case4_Testing_Optimization.md`](Docs/Case4_Testing_Optimization.md).
 
 Небольшой 3D-проект для портфолио: игрок управляет шаром, собирает монеты в кошелёк,
 активирует бонусы, уворачивается от подвижных препятствий и старается не врезаться
 на скорости в бочки со взрывчаткой.
 
 **Движок:** Unity 2022.3 LTS (Built-in Render Pipeline)
-**Пакеты:** Cinemachine 2.10, Unity UI
+**Пакеты:** Cinemachine 2.10, Unity UI, Unity Test Framework
 
 ## Как открыть
 
@@ -28,6 +31,7 @@
 | 1 / 2 / 3 | Использовать аптечку / щит / ускоритель |
 | I или Tab | Инвентарь |
 | Esc | Пауза / назад |
+| F1–F8 | Отладка (только в редакторе) |
 
 ## Что реализовано
 
@@ -95,6 +99,16 @@
   Все анимации идут в нескалированном времени и работают на паузе.
 - Подробный анализ: [`Docs/Case3_UI_Analysis.md`](Docs/Case3_UI_Analysis.md).
 
+### 7. Тестирование и оптимизация (кейс-задача № 4)
+- **Автотесты:** 25 EditMode + 17 PlayMode (Window → General → Test Runner). Игровой код вынесен в сборку `PortfolioGame.asmdef`.
+- **Отладочные клавиши** (редактор и Development Build): F1 — FPS, F2 — предметы, F3 — лечение, F4 — монеты,
+  F5 — гибель, F6 — победа, F7 — бессмертие, F8 — замедление.
+- **Оптимизация:** пул эффектов и UI-значков, отсутствие аллокаций в Update HUD, кэширование компонентов,
+  слои физики, GPU Instancing, static batching, отключение теней у мелких объектов, дальность отрисовки.
+- **Настройки производительности:** качество (низкое/среднее/высокое), лимит FPS, автоснижение качества, счётчик FPS.
+- **Адаптация:** Safe Area для смартфонов с вырезами, сенсорный джойстик и кнопка прыжка, альбомная ориентация,
+  скрытие неподдерживаемых элементов на WebGL/iOS/мобильных.
+
 ## Структура
 
 ```
@@ -102,16 +116,21 @@ Assets/
   Editor/DemoSceneBuilder.cs     — сборка сцен, префабов, анимаций, частиц
   Editor/DemoSceneBuilder.UI.cs  — сборка интерфейса (меню, HUD, окна)
   Scripts/
-    Core/        GamePause, GameSettings
+    Core/        GamePause, GameSettings, EffectPool, PhysicsLayers, AdaptiveQuality, DebugCheats, MobileInput
     Player/      PlayerController, PlayerHealth
     Collectables/Coin, Wallet
     Items/       ItemType (ItemDatabase), Inventory
     Level/       LevelStats
     Bonus/       BonusZone
     Obstacles/   ExplosiveBarrel, MovingObstacle
-    Effects/     PlayerMovementParticles, AutoDestroy, SimpleRotator
+    Effects/     PlayerMovementParticles, AutoDestroy, LightFlash, EffectPrewarmer, SimpleRotator
     UI/          GameUIController, MainMenuController, HealthUI, WalletUI, CountersUI,
                  ToastUI, CoinFlyUI, SettingsPanel
     UI/Core/     UIPanel, UIButtonFeedback, UIStaggerReveal, UIFloatAnimation, UIPunch, UIEasing, UISound
     UI/Inventory/InventoryUI, InventorySlotUI, HotbarUI
+    UI/Touch/    VirtualJoystick, TouchControlsUI
+    UI/          FpsCounterUI, SafeAreaFitter, PlatformVisibility
+  Tests/
+    EditMode/    LogicTests — модульные тесты логики
+    PlayMode/    GameplayTests — тесты механик с физикой
 ```

@@ -21,6 +21,12 @@ public class CountersUI : MonoBehaviour
     private int _lastCoins = -1;
     private int _lastBonuses = -1;
 
+    // Оптимизация: текст пересобирается только при изменении значения,
+    // а не каждый кадр (строки в Update создают мусор для сборщика)
+    private int _shownSeconds = -1;
+    private int _shownShieldTenths = -1;
+    private int _shownBoostTenths = -1;
+
     private void OnEnable()
     {
         if (stats != null)
@@ -57,16 +63,31 @@ public class CountersUI : MonoBehaviour
     private void Update()
     {
         if (stats != null && timerText != null)
-            timerText.text = LevelStats.FormatTime(stats.ElapsedTime);
+        {
+            int seconds = Mathf.FloorToInt(stats.ElapsedTime);
+            if (seconds != _shownSeconds)
+            {
+                _shownSeconds = seconds;
+                timerText.text = LevelStats.FormatTime(seconds);
+            }
+        }
 
         if (effectsText == null)
             return;
 
+        int shield = health != null && health.IsShielded ? Mathf.CeilToInt(health.ShieldTimeLeft * 10f) : 0;
+        int boost = controller != null && controller.IsBoosted ? Mathf.CeilToInt(controller.SpeedBoostTimeLeft * 10f) : 0;
+        if (shield == _shownShieldTenths && boost == _shownBoostTenths)
+            return;
+
+        _shownShieldTenths = shield;
+        _shownBoostTenths = boost;
+
         string text = string.Empty;
-        if (health != null && health.IsShielded)
-            text += $"<color=#66B3FF>Щит: {health.ShieldTimeLeft:0.0} с</color>   ";
-        if (controller != null && controller.IsBoosted)
-            text += $"<color=#FFC040>Ускорение: {controller.SpeedBoostTimeLeft:0.0} с</color>";
+        if (shield > 0)
+            text += $"<color=#66B3FF>Щит: {shield / 10f:0.0} с</color>   ";
+        if (boost > 0)
+            text += $"<color=#FFC040>Ускорение: {boost / 10f:0.0} с</color>";
         effectsText.text = text;
     }
 }

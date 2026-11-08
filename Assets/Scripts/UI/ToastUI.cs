@@ -21,6 +21,16 @@ public class ToastUI : MonoBehaviour
 
     private void Awake() => Instance = this;
 
+    // Исправление: если объект выключили во время показа, корутина останавливается —
+    // без сброса флага новые уведомления больше никогда бы не показались
+    private void OnDisable() => _routine = null;
+
+    private void OnEnable()
+    {
+        if (_queue.Count > 0 && _routine == null)
+            _routine = StartCoroutine(Process());
+    }
+
     private void OnDestroy()
     {
         if (Instance == this)

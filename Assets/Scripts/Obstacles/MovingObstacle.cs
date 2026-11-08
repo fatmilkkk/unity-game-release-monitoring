@@ -32,6 +32,10 @@ public class MovingObstacle : MonoBehaviour
     private Rigidbody _rb;
     private Vector3 _startPosition;
 
+    // Кэш: OnCollisionStay вызывается каждый шаг физики, GetComponentInParent — дорогой вызов
+    private Collider _cachedCollider;
+    private PlayerHealth _cachedHealth;
+
     private void Awake()
     {
         _rb = GetComponent<Rigidbody>();
@@ -61,7 +65,14 @@ public class MovingObstacle : MonoBehaviour
 
     private void TryHit(Collision collision)
     {
-        var health = collision.collider.GetComponentInParent<PlayerHealth>();
+        Collider other = collision.collider;
+        if (other != _cachedCollider)
+        {
+            _cachedCollider = other;
+            _cachedHealth = other.GetComponentInParent<PlayerHealth>();
+        }
+
+        PlayerHealth health = _cachedHealth;
         if (health == null || health.IsDead)
             return;
 

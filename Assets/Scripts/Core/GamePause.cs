@@ -21,6 +21,13 @@ public static class GamePause
         PauseChanged?.Invoke(paused);
     }
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics()
+    {
+        PauseChanged = null;
+        Reset();
+    }
+
     /// <summary>Сбросить паузу (при загрузке сцены).</summary>
     public static void Reset()
     {

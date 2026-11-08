@@ -20,7 +20,7 @@ public static partial class DemoSceneBuilder
     public const string MenuScenePath = "Assets/Scenes/MainMenu.unity";
 
     /// <summary>Версия сборки сцен. При увеличении сцены пересобираются автоматически.</summary>
-    public const int BuildVersion = 2;
+    public const int BuildVersion = 3;
     public const string BuildVersionFile = "Library/PortfolioDemoBuildVersion.txt";
 
     private const string MaterialsFolder = "Assets/Materials";
@@ -49,6 +49,9 @@ public static partial class DemoSceneBuilder
     public static void Build()
     {
         EnsureFolders();
+        EnsureLayer(8, PhysicsLayers.PlayerLayerName);
+        EnsureLayer(9, PhysicsLayers.CollectableLayerName);
+        ConfigurePlayerSettings();
 
         // Материалы
         var mats = new Materials
@@ -98,9 +101,16 @@ public static partial class DemoSceneBuilder
         PlaceBonuses(bonusPrefab);
         PlaceMovingObstacles(mats);
         PlaceBarrels(barrelPrefab);
-        var statsGo = new GameObject("LevelStats");
+        var statsGo = new GameObject("GameSystems");
         var stats = statsGo.AddComponent<LevelStats>();
         SetRef(stats, "playerHealth", health);
+        statsGo.AddComponent<AdaptiveQuality>();
+        var cheats = statsGo.AddComponent<DebugCheats>();
+        SetRef(cheats, "health", health);
+        SetRef(cheats, "inventory", inventory);
+        SetRef(cheats, "wallet", wallet);
+        var prewarmer = statsGo.AddComponent<EffectPrewarmer>();
+        SetPrewarm(prewarmer, new[] { coinFx, explosionFx, deathFx }, new[] { 6, 4, 1 });
 
         UISprites sprites = CreateUISprites();
         CreateGameUI(sprites, health, wallet, inventory, controller, stats);
@@ -216,6 +226,67 @@ public static partial class DemoSceneBuilder
         so.ApplyModifiedPropertiesWithoutUndo();
     }
 
+    private static void EnsureLayer(int index, string name)
+    {
+        Object[] assets = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset");
+        if (assets == null || assets.Length == 0) return;
+        var tagManager = new SerializedObject(assets[0]);
+        SerializedProperty layers = tagManager.FindProperty("layers");
+        if (layers == null || index >= layers.arraySize) return;
+
+        SerializedProperty layer = layers.GetArrayElementAtIndex(index);
+        if (layer.stringValue == name) return;
+        if (!string.IsNullOrEmpty(layer.stringValue))
+        {
+            Debug.LogWarning($"[Portfolio Demo] Слой {index} уже занят ('{layer.stringValue}'), слой '{name}' не создан");
+            return;
+        }
+        layer.stringValue = name;
+        tagManager.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void SetLayer(GameObject go, int layer, bool recursive)
+    {
+        if (layer < 0) return;
+        go.layer = layer;
+        if (!recursive) return;
+        foreach (Transform child in go.transform)
+            SetLayer(child.gameObject, layer, true);
+    }
+
+    private static void SetPrewarm(EffectPrewarmer target, GameObject[] prefabs, int[] counts)
+    {
+        var so = new SerializedObject(target);
+        SerializedProperty list = FindProp(so, "effects");
+        if (list == null) return;
+        list.arraySize = prefabs.Length;
+        for (int i = 0; i < prefabs.Length; i++)
+        {
+            SerializedProperty e = list.GetArrayElementAtIndex(i);
+            e.FindPropertyRelative("prefab").objectReferenceValue = prefabs[i];
+            e.FindPropertyRelative("count").intValue = counts[i];
+        }
+        so.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>Настройки сборки для разных платформ и экранов.</summary>
+    private static void ConfigurePlayerSettings()
+    {
+        PlayerSettings.companyName = "Portfolio";
+        PlayerSettings.productName = "Ball Collector";
+        PlayerSettings.defaultScreenWidth = 1920;
+        PlayerSettings.defaultScreenHeight = 1080;
+        PlayerSettings.fullScreenMode = FullScreenMode.FullScreenWindow;
+        PlayerSettings.resizableWindow = true;
+        PlayerSettings.runInBackground = false;
+        // Мобильные: только альбомная ориентация с автоповоротом
+        PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
+        PlayerSettings.allowedAutorotateToPortrait = false;
+        PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
+        PlayerSettings.allowedAutorotateToLandscapeLeft = true;
+        PlayerSettings.allowedAutorotateToLandscapeRight = true;
+    }
+
     private static void SetBool(Object target, string field, bool value)
     {
         var so = new SerializedObject(target);
@@ -277,6 +348,9 @@ public static partial class DemoSceneBuilder
             m.SetColor("_EmissionColor", emission.Value);
             m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
         }
+
+        // Оптимизация: GPU Instancing — одинаковые объекты (монеты, бочки) рисуются меньшим числом вызовов
+        m.enableInstancing = true;
 
         CreateOrReplaceAsset(m, $"{MaterialsFolder}/{name}.mat");
         return m;
@@ -453,8 +527,8 @@ public static partial class DemoSceneBuilder
 
         var auto = fire.gameObject.AddComponent<AutoDestroy>();
         SetFloat(auto, "lifetime", 3f);
-        var lightAuto = lightGo.AddComponent<AutoDestroy>();
-        SetFloat(lightAuto, "lifetime", 0.15f);
+        var flash = lightGo.AddComponent<LightFlash>();
+        SetFloat(flash, "duration", 0.25f);
 
         return fire.gameObject;
     }
@@ -695,8 +769,15 @@ public static partial class DemoSceneBuilder
         trigger.isTrigger = true;
         trigger.radius = 0.6f;
 
-        CreatePrimitiveChild(PrimitiveType.Cylinder, "Mesh", root.transform, mats.Gold,
+        GameObject mesh = CreatePrimitiveChild(PrimitiveType.Cylinder, "Mesh", root.transform, mats.Gold,
             Vector3.zero, new Vector3(0.8f, 0.06f, 0.8f), new Vector3(90f, 0f, 0f), false);
+
+        // Оптимизация: мелкие монеты не отбрасывают и не принимают тени
+        var coinRenderer = mesh.GetComponent<Renderer>();
+        coinRenderer.shadowCastingMode = ShadowCastingMode.Off;
+        coinRenderer.receiveShadows = false;
+
+        SetLayer(root, PhysicsLayers.Collectable, true);
 
         var coin = root.AddComponent<Coin>();
         SetRef(coin, "pickupEffectPrefab", pickupFx);
@@ -761,6 +842,7 @@ public static partial class DemoSceneBuilder
 
         var zone = root.AddComponent<BonusZone>();
         SetRef(zone, "animator", animator);
+        SetLayer(root, PhysicsLayers.Collectable, false); // пьедестал остаётся на слое Default
         return root;
     }
 
@@ -824,6 +906,8 @@ public static partial class DemoSceneBuilder
         CreatePrimitiveChild(PrimitiveType.Cylinder, "Stripe_B", player.transform, mats.PlayerStripe,
             Vector3.zero, new Vector3(1.02f, 0.04f, 1.02f), new Vector3(90f, 0f, 0f), false);
 
+        SetLayer(player, PhysicsLayers.Player, true);
+
         var rb = player.AddComponent<Rigidbody>();
         rb.mass = 1f;
         rb.drag = 0.4f;
@@ -884,7 +968,7 @@ public static partial class DemoSceneBuilder
         vcam.LookAt = target;
         vcam.m_Lens.FieldOfView = 55f;
         vcam.m_Lens.NearClipPlane = 0.1f;
-        vcam.m_Lens.FarClipPlane = 500f;
+        vcam.m_Lens.FarClipPlane = 150f; // оптимизация: уровень не длиннее 70 м
 
         // Body: Transposer — камера держится на смещении от игрока в мировых координатах
         // (WorldSpace, чтобы камера не крутилась вместе с катящимся шаром)

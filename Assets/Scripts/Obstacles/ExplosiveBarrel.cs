@@ -52,7 +52,7 @@ public class ExplosiveBarrel : MonoBehaviour
         Vector3 center = transform.position;
 
         if (explosionEffectPrefab != null)
-            Instantiate(explosionEffectPrefab, center, Quaternion.identity);
+            EffectPool.Spawn(explosionEffectPrefab, center);
 
         Collider[] hits = Physics.OverlapSphere(center, explosionRadius, ~0, QueryTriggerInteraction.Ignore);
         foreach (Collider hit in hits)

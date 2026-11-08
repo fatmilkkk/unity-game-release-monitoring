@@ -74,12 +74,17 @@ public class PlayerController : MonoBehaviour
     {
         if (GamePause.IsPaused)
         {
+            // Исправление: нажатие прыжка перед паузой не должно «срабатывать» после неё
             _moveInput = Vector3.zero;
+            _jumpRequested = false;
+            MobileInput.ConsumeJump();
             return;
         }
 
-        float h = Input.GetAxisRaw("Horizontal");
-        float v = Input.GetAxisRaw("Vertical");
+        // Клавиатура + сенсорный джойстик
+        Vector2 touch = MobileInput.Move;
+        float h = Mathf.Clamp(Input.GetAxisRaw("Horizontal") + touch.x, -1f, 1f);
+        float v = Mathf.Clamp(Input.GetAxisRaw("Vertical") + touch.y, -1f, 1f);
 
         Vector3 forward = Vector3.forward;
         Vector3 right = Vector3.right;
@@ -91,7 +96,7 @@ public class PlayerController : MonoBehaviour
 
         _moveInput = Vector3.ClampMagnitude(forward * v + right * h, 1f);
 
-        if (Input.GetButtonDown("Jump"))
+        if (Input.GetButtonDown("Jump") || MobileInput.ConsumeJump())
             _jumpRequested = true;
     }
 

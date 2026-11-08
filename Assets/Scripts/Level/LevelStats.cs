@@ -77,9 +77,11 @@ public class LevelStats : MonoBehaviour
         Changed?.Invoke();
     }
 
-    public static string FormatTime(float seconds)
+    public static string FormatTime(float seconds) => FormatTime(Mathf.FloorToInt(Mathf.Max(0f, seconds)));
+
+    public static string FormatTime(int totalSeconds)
     {
-        int total = Mathf.FloorToInt(seconds);
-        return $"{total / 60:00}:{total % 60:00}";
+        if (totalSeconds < 0) totalSeconds = 0;
+        return $"{totalSeconds / 60:00}:{totalSeconds % 60:00}";
     }
 }

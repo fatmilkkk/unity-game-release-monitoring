@@ -141,7 +141,7 @@ public class PlayerHealth : MonoBehaviour
         IsDead = true;
 
         if (deathEffectPrefab != null)
-            Instantiate(deathEffectPrefab, transform.position, Quaternion.identity);
+            EffectPool.Spawn(deathEffectPrefab, transform.position);
 
         var controller = GetComponent<PlayerController>();
         if (controller != null)

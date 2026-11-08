@@ -29,6 +29,9 @@ public class BonusZone : MonoBehaviour
 
     private int _parameterHash;
     private bool _rewardGiven;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics() => RewardGiven = null;
     private int _playersInside;
 
     public bool PlayerInside => _playersInside > 0;

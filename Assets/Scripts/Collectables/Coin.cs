@@ -22,18 +22,27 @@ public class Coin : MonoBehaviour
     [SerializeField] private GameObject pickupEffectPrefab;
 
     private Vector3 _startPosition;
+    private Renderer _renderer;
     private float _bobOffset;
     private bool _collected;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStatics() => Collected = null; // для режима без перезагрузки домена
 
     private void Start()
     {
         GetComponent<Collider>().isTrigger = true;
+        _renderer = GetComponentInChildren<Renderer>();
         _startPosition = transform.position;
         _bobOffset = UnityEngine.Random.value * Mathf.PI * 2f; // чтобы монеты качались не синхронно
     }
 
     private void Update()
     {
+        // Оптимизация: монеты вне поля зрения камеры не анимируются
+        if (_renderer != null && !_renderer.isVisible)
+            return;
+
         transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime, Space.World);
         float y = Mathf.Sin(Time.time * bobFrequency + _bobOffset) * bobAmplitude;
         transform.position = _startPosition + Vector3.up * y;
@@ -41,20 +50,27 @@ public class Coin : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (_collected)
-            return;
-
         var wallet = other.GetComponentInParent<Wallet>();
-        if (wallet == null)
-            return;
+        if (wallet != null)
+            TryCollect(wallet);
+    }
+
+    public bool IsCollected => _collected;
+
+    /// <summary>Собрать монету в указанный кошелёк (используется триггером, отладкой и тестами).</summary>
+    public bool TryCollect(Wallet wallet)
+    {
+        if (_collected || wallet == null)
+            return false;
 
         _collected = true;
         wallet.AddCoins(value);
         Collected?.Invoke(this, transform.position);
 
         if (pickupEffectPrefab != null)
-            Instantiate(pickupEffectPrefab, transform.position, Quaternion.identity);
+            EffectPool.Spawn(pickupEffectPrefab, transform.position);
 
         Destroy(gameObject);
+        return true;
     }
 }

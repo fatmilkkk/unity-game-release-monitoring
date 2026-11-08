@@ -33,6 +33,8 @@ public class HealthUI : MonoBehaviour
     private float _trailRatio = 1f;
     private float _trailHoldUntil;
     private int _lastHealth = -1;
+    private float _appliedFill = -1f;
+    private float _appliedTrail = -1f;
 
     private void OnEnable()
     {
@@ -95,12 +97,25 @@ public class HealthUI : MonoBehaviour
         float dt = Time.unscaledDeltaTime;
 
         _displayRatio = Mathf.Lerp(_displayRatio, _targetRatio, 1f - Mathf.Exp(-fillSpeed * dt));
-        SetBar(fillBar, _displayRatio);
+        if (Mathf.Abs(_displayRatio - _targetRatio) < 0.0005f)
+            _displayRatio = _targetRatio;
 
         if (Time.unscaledTime >= _trailHoldUntil)
             _trailRatio = Mathf.MoveTowards(_trailRatio, _displayRatio, trailSpeed * dt);
         _trailRatio = Mathf.Max(_trailRatio, _displayRatio);
-        SetBar(trailBar, _trailRatio);
+
+        // Оптимизация: RectTransform меняется только при изменении значения —
+        // иначе Canvas перестраивал бы геометрию каждый кадр
+        if (!Mathf.Approximately(_appliedFill, _displayRatio))
+        {
+            _appliedFill = _displayRatio;
+            SetBar(fillBar, _displayRatio);
+        }
+        if (!Mathf.Approximately(_appliedTrail, _trailRatio))
+        {
+            _appliedTrail = _trailRatio;
+            SetBar(trailBar, _trailRatio);
+        }
 
         if (fillImage == null || health == null)
             return;

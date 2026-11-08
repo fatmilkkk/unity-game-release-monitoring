@@ -1,7 +1,10 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>Окно настроек: громкость, полноэкранный режим, подсказки, сброс кошелька.</summary>
+/// <summary>
+/// Окно настроек: громкость, полноэкранный режим, подсказки, качество графики, ограничение FPS,
+/// автокачество, счётчик FPS, сенсорное управление, сброс кошелька.
+/// </summary>
 public class SettingsPanel : MonoBehaviour
 {
     [SerializeField] private Slider volumeSlider;
@@ -10,6 +13,15 @@ public class SettingsPanel : MonoBehaviour
     [SerializeField] private Toggle hintsToggle;
     [SerializeField] private Button resetWalletButton;
     [SerializeField] private Text resetWalletLabel;
+
+    [Header("Графика и производительность")]
+    [SerializeField] private Button qualityButton;
+    [SerializeField] private Text qualityLabel;
+    [SerializeField] private Button fpsLimitButton;
+    [SerializeField] private Text fpsLimitLabel;
+    [SerializeField] private Toggle autoQualityToggle;
+    [SerializeField] private Toggle showFpsToggle;
+    [SerializeField] private Toggle touchToggle;
 
     private bool _updating;
     private bool _listenersAdded;
@@ -24,6 +36,30 @@ public class SettingsPanel : MonoBehaviour
         if (fullscreenToggle != null) fullscreenToggle.onValueChanged.AddListener(OnFullscreenChanged);
         if (hintsToggle != null) hintsToggle.onValueChanged.AddListener(OnHintsChanged);
         if (resetWalletButton != null) resetWalletButton.onClick.AddListener(OnResetWallet);
+
+        if (qualityButton != null)
+            qualityButton.onClick.AddListener(() =>
+            {
+                GameSettings.SetQuality((GameSettings.Quality + 1) % GameSettings.QualityNames.Length);
+                UpdateCycleLabels();
+            });
+        if (fpsLimitButton != null)
+            fpsLimitButton.onClick.AddListener(() =>
+            {
+                GameSettings.SetFpsLimit((GameSettings.FpsLimitIndex + 1) % GameSettings.FpsLimits.Length);
+                UpdateCycleLabels();
+            });
+        if (autoQualityToggle != null) autoQualityToggle.onValueChanged.AddListener(v => { if (!_updating) GameSettings.SetAutoQuality(v); });
+        if (showFpsToggle != null) showFpsToggle.onValueChanged.AddListener(v => { if (!_updating) GameSettings.SetShowFps(v); });
+        if (touchToggle != null) touchToggle.onValueChanged.AddListener(v => { if (!_updating) GameSettings.SetTouchControls(v); });
+    }
+
+    private void UpdateCycleLabels()
+    {
+        if (qualityLabel != null)
+            qualityLabel.text = $"Качество: {GameSettings.QualityNames[GameSettings.Quality]}";
+        if (fpsLimitLabel != null)
+            fpsLimitLabel.text = $"Лимит FPS: {GameSettings.FpsLimitNames[GameSettings.FpsLimitIndex]}";
     }
 
     private void OnEnable()
@@ -33,7 +69,11 @@ public class SettingsPanel : MonoBehaviour
         if (volumeSlider != null) volumeSlider.value = GameSettings.Volume;
         if (fullscreenToggle != null) fullscreenToggle.isOn = GameSettings.Fullscreen;
         if (hintsToggle != null) hintsToggle.isOn = GameSettings.ShowHints;
+        if (autoQualityToggle != null) autoQualityToggle.isOn = GameSettings.AutoQuality;
+        if (showFpsToggle != null) showFpsToggle.isOn = GameSettings.ShowFps;
+        if (touchToggle != null) touchToggle.isOn = GameSettings.TouchControls;
         _updating = false;
+        UpdateCycleLabels();
         UpdateVolumeLabel();
         _resetConfirmUntil = 0f;
         if (resetWalletLabel != null) resetWalletLabel.text = "Обнулить кошелёк";

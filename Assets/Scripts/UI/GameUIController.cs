@@ -209,7 +209,7 @@ public class GameUIController : MonoBehaviour
     private void ApplySettings()
     {
         if (hintsRoot != null)
-            hintsRoot.SetActive(GameSettings.ShowHints);
+            hintsRoot.SetActive(GameSettings.ShowHints && !GameSettings.TouchControls);
     }
 
     // ───── События игры ─────

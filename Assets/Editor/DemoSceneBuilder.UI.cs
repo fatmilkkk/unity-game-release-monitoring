@@ -459,20 +459,38 @@ public static partial class DemoSceneBuilder
 
     private static UIPanel CreateSettingsWindow(UISprites sprites, Transform canvas, out Button backButton)
     {
-        UIPanel panel = NewWindow(sprites, canvas, "SettingsPanel", "Настройки", new Vector2(820f, 700f),
+        UIPanel panel = NewWindow(sprites, canvas, "SettingsPanel", "Настройки", new Vector2(1320f, 800f),
             UIPanel.AnimationType.SlideFromBottom, out RectTransform window);
 
-        NewText("VolumeLabel", window, "Громкость", 32, TextAnchor.MiddleLeft,
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(-130f, -170f), new Vector2(400f, 50f));
-        Text volumeValue = NewText("VolumeValue", window, "80%", 32, TextAnchor.MiddleRight,
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(230f, -170f), new Vector2(160f, 50f), GoldColor, true);
-        Slider volume = NewSlider(sprites, window, new Vector2(0f, -230f), new Vector2(620f, 30f));
+        const float left = -320f, right = 320f;
 
-        Toggle fullscreen = NewToggle(sprites, window, "Полноэкранный режим", new Vector2(0f, -320f), new Vector2(620f, 50f));
-        Toggle hints = NewToggle(sprites, window, "Показывать подсказки", new Vector2(0f, -390f), new Vector2(620f, 50f));
+        // Левая колонка: звук, экран, управление
+        NewText("SoundHeader", window, "Звук и управление", 30, TextAnchor.MiddleCenter,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(left, -150f), new Vector2(560f, 44f), GoldColor, true);
+        NewText("VolumeLabel", window, "Громкость", 28, TextAnchor.MiddleLeft,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(left - 90f, -210f), new Vector2(380f, 44f));
+        Text volumeValue = NewText("VolumeValue", window, "80%", 28, TextAnchor.MiddleRight,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(left + 200f, -210f), new Vector2(160f, 44f), GoldColor, true);
+        Slider volume = NewSlider(sprites, window, new Vector2(left, -260f), new Vector2(540f, 28f));
+
+        Toggle fullscreen = NewToggle(sprites, window, "Полноэкранный режим", new Vector2(left, -335f), new Vector2(540f, 50f));
+        var fullscreenPlatform = fullscreen.gameObject.AddComponent<PlatformVisibility>();
+        SetBool(fullscreenPlatform, "hideOnMobile", true);
+        Toggle hints = NewToggle(sprites, window, "Показывать подсказки", new Vector2(left, -400f), new Vector2(540f, 50f));
+        Toggle touch = NewToggle(sprites, window, "Сенсорное управление", new Vector2(left, -465f), new Vector2(540f, 50f));
+
+        // Правая колонка: графика и производительность
+        NewText("GraphicsHeader", window, "Графика и производительность", 30, TextAnchor.MiddleCenter,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(right, -150f), new Vector2(560f, 44f), GoldColor, true);
+        Button quality = NewButton(sprites, window, "Качество: Высокое", new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f),
+            new Vector2(right, -225f), new Vector2(540f, 66f), null, 26);
+        Button fpsLimit = NewButton(sprites, window, "Лимит FPS: 60", new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f),
+            new Vector2(right, -305f), new Vector2(540f, 66f), null, 26);
+        Toggle autoQuality = NewToggle(sprites, window, "Автоснижение качества", new Vector2(right, -385f), new Vector2(540f, 50f));
+        Toggle showFps = NewToggle(sprites, window, "Показывать FPS (F1)", new Vector2(right, -450f), new Vector2(540f, 50f));
 
         Button reset = NewButton(sprites, window, "Обнулить кошелёк", new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f),
-            new Vector2(0f, -490f), new Vector2(460f, 70f), new Color(0.45f, 0.2f, 0.2f), 26);
+            new Vector2(0f, -575f), new Vector2(460f, 66f), new Color(0.45f, 0.2f, 0.2f), 26);
 
         backButton = NewButton(sprites, window, "Назад", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
             new Vector2(0f, 35f), new Vector2(320f, 80f));
@@ -484,7 +502,54 @@ public static partial class DemoSceneBuilder
         SetRef(settings, "hintsToggle", hints);
         SetRef(settings, "resetWalletButton", reset);
         SetRef(settings, "resetWalletLabel", reset.GetComponentInChildren<Text>(true));
+        SetRef(settings, "qualityButton", quality);
+        SetRef(settings, "qualityLabel", quality.GetComponentInChildren<Text>(true));
+        SetRef(settings, "fpsLimitButton", fpsLimit);
+        SetRef(settings, "fpsLimitLabel", fpsLimit.GetComponentInChildren<Text>(true));
+        SetRef(settings, "autoQualityToggle", autoQuality);
+        SetRef(settings, "showFpsToggle", showFps);
+        SetRef(settings, "touchToggle", touch);
         return panel;
+    }
+
+    /// <summary>Счётчик FPS в правом нижнем углу (для тестирования производительности).</summary>
+    private static void CreateFpsCounter(UISprites sprites, Transform parent)
+    {
+        RectTransform box = NewRect("FpsCounter", parent, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+            new Vector2(0f, -20f), new Vector2(560f, 96f));
+        AddImage(box, sprites.Rounded, new Color(0f, 0f, 0f, 0.6f));
+        Text label = NewText("Label", box, "FPS", 20, TextAnchor.MiddleCenter,
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(540f, 92f));
+
+        var host = parent.gameObject.AddComponent<FpsCounterUI>();
+        SetRef(host, "label", label);
+        SetRef(host, "root", box.gameObject);
+    }
+
+    /// <summary>Сенсорное управление: джойстик слева внизу и кнопка прыжка справа внизу.</summary>
+    private static void CreateTouchControls(UISprites sprites, Transform hud, GameObject keyboardHints)
+    {
+        RectTransform root = NewStretch("TouchControls", hud);
+
+        RectTransform joyArea = NewRect("Joystick", root, Vector2.zero, new Vector2(0.5f, 0.5f),
+            new Vector2(220f, 220f), new Vector2(300f, 300f));
+        AddImage(joyArea, sprites.Circle, new Color(1f, 1f, 1f, 0.12f), true);
+        RectTransform knob = NewRect("Knob", joyArea, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            Vector2.zero, new Vector2(130f, 130f));
+        AddImage(knob, sprites.Circle, new Color(1f, 1f, 1f, 0.45f));
+        var joystick = joyArea.gameObject.AddComponent<VirtualJoystick>();
+        SetRef(joystick, "background", joyArea);
+        SetRef(joystick, "knob", knob);
+
+        Button jump = NewButton(sprites, root, "Прыжок", new Vector2(1f, 0f), new Vector2(0.5f, 0.5f),
+            new Vector2(-190f, 200f), new Vector2(200f, 200f), new Color(0.25f, 0.6f, 1f, 0.6f), 30);
+        jump.GetComponent<Image>().sprite = sprites.Circle;
+        jump.GetComponent<Image>().type = Image.Type.Simple;
+
+        var ui = hud.gameObject.AddComponent<TouchControlsUI>();
+        SetRef(ui, "controlsRoot", root.gameObject);
+        SetRef(ui, "jumpButton", jump);
+        SetRef(ui, "keyboardHints", keyboardHints);
     }
 
     // ───────────────────────────── Игровой интерфейс ─────────────────────────────
@@ -499,6 +564,8 @@ public static partial class DemoSceneBuilder
         Vector2 topRight = new Vector2(1f, 1f);
 
         RectTransform hud = NewStretch("HUD", root);
+        // Адаптация: HUD не заходит под вырезы и скруглённые углы экрана смартфонов
+        hud.gameObject.AddComponent<SafeAreaFitter>();
 
         // ── Левая карточка: кошелёк, здоровье, эффекты
         RectTransform leftCard = NewRect("PlayerCard", hud, topLeft, topLeft, new Vector2(30f, -30f), new Vector2(500f, 185f));
@@ -557,6 +624,10 @@ public static partial class DemoSceneBuilder
         Text hints = NewText("Hints", hud,
             "WASD — движение   Пробел — прыжок   1/2/3 — предметы\nI — инвентарь   Esc — пауза",
             22, TextAnchor.LowerLeft, Vector2.zero, Vector2.zero, new Vector2(30f, 30f), new Vector2(700f, 70f), MutedText);
+
+        // ── Сенсорное управление и счётчик FPS
+        CreateTouchControls(sprites, hud, hints.gameObject);
+        CreateFpsCounter(sprites, hud);
 
         // ── Уведомления
         RectTransform toast = NewRect("Toast", hud, topRight, topRight, new Vector2(-30f, -305f), new Vector2(560f, 76f));
@@ -804,6 +875,10 @@ public static partial class DemoSceneBuilder
         Button controlsBtn = NewButton(sprites, buttons, "Управление", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -115f), new Vector2(440f, 82f));
         Button settingsBtn = NewButton(sprites, buttons, "Настройки", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -215f), new Vector2(440f, 82f));
         Button quit = NewButton(sprites, buttons, "Выход", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -315f), new Vector2(440f, 82f), new Color(0.45f, 0.22f, 0.22f));
+        // В браузере и на iOS выход из приложения не поддерживается — кнопка скрывается
+        var quitPlatform = quit.gameObject.AddComponent<PlatformVisibility>();
+        SetBool(quitPlatform, "hideOnWebGL", true);
+        SetBool(quitPlatform, "hideOnIOS", true);
 
         RectTransform walletCard = NewRect("WalletCard", mainRoot, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(0f, 60f), new Vector2(440f, 70f));
         AddImage(walletCard, sprites.Rounded, CardColor);
@@ -818,6 +893,7 @@ public static partial class DemoSceneBuilder
 
         UIPanel controls = CreateControlsWindow(sprites, root, out Button controlsBack);
         UIPanel settings = CreateSettingsWindow(sprites, root, out Button settingsBack);
+        CreateFpsCounter(sprites, root);
 
         RectTransform fade = NewStretch("FadeOverlay", root);
         AddImage(fade, null, Color.black, true);
