@@ -1,0 +1,13 @@
+{
+    "configVersion": 1,
+    "latestVersion": "1.2.0",
+    "updateUrl": "https://github.com/fatmilkkk/unity-game-release-monitoring/releases",
+    "newsTitle": "Вышла версия 1.2.0",
+    "newsText": "Теперь можно оставить отзыв прямо из игры: пауза → «Оставить отзыв». Спасибо, что играете!",
+    "barrelExplodeSpeed": 7.0,
+    "obstacleDamageMultiplier": 1.0,
+    "threeStarTime": 90.0,
+    "twoStarTime": 150.0,
+    "analyticsEndpoint": "",
+    "feedbackRepo": "fatmilkkk/unity-game-release-monitoring"
+}

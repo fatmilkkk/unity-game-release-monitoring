@@ -38,6 +38,9 @@ public class PlayerHealth : MonoBehaviour
     public int CurrentHealth { get; private set; }
     public bool IsDead { get; private set; }
     public bool IsShielded => Time.time < _shieldUntil;
+
+    /// <summary>Источник последнего урона (obstacle, barrel, barrel_splash, fall, debug) — для аналитики гибелей.</summary>
+    public string LastDamageSource { get; private set; } = "";
     public float ShieldTimeLeft => Mathf.Max(0f, _shieldUntil - Time.time);
     public bool IsLowHealth => CurrentHealth <= Mathf.CeilToInt(maxHealth * lowHealthThreshold);
 
@@ -74,7 +77,7 @@ public class PlayerHealth : MonoBehaviour
     private void Update()
     {
         if (!IsDead && transform.position.y < killHeight)
-            Kill(true);
+            Kill(true, "fall");
 
         if (shieldVisual != null)
         {
@@ -93,7 +96,7 @@ public class PlayerHealth : MonoBehaviour
     }
 
     /// <summary>Нанести урон. Возвращает true, если урон был применён.</summary>
-    public bool TakeDamage(int amount)
+    public bool TakeDamage(int amount, string source = null)
     {
         if (IsDead || amount <= 0)
             return false;
@@ -102,6 +105,7 @@ public class PlayerHealth : MonoBehaviour
             return false;
 
         _lastDamageTime = Time.time;
+        LastDamageSource = source ?? "unknown";
         CurrentHealth = Mathf.Max(0, CurrentHealth - amount);
         HealthChanged?.Invoke(CurrentHealth, maxHealth);
 
@@ -126,10 +130,12 @@ public class PlayerHealth : MonoBehaviour
     /// Мгновенное уничтожение игрока (например, взрыв бочки).
     /// Активный щит спасает, если ignoreShield = false.
     /// </summary>
-    public void Kill(bool ignoreShield = false)
+    public void Kill(bool ignoreShield = false, string source = null)
     {
         if (IsDead || (IsShielded && !ignoreShield))
             return;
+
+        LastDamageSource = source ?? "unknown";
 
         CurrentHealth = 0;
         HealthChanged?.Invoke(CurrentHealth, maxHealth);

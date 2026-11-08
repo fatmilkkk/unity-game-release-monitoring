@@ -77,7 +77,9 @@ public class MovingObstacle : MonoBehaviour
             return;
 
         // PlayerHealth сам учитывает время неуязвимости после удара
-        if (!health.TakeDamage(damage) || health.IsDead)
+        // Урон можно менять после релиза через удалённый конфиг (obstacleDamageMultiplier)
+        int finalDamage = Mathf.Max(1, Mathf.RoundToInt(damage * RemoteConfig.Current.obstacleDamageMultiplier));
+        if (!health.TakeDamage(finalDamage, "obstacle") || health.IsDead)
             return;
 
         Rigidbody body = collision.rigidbody;

@@ -11,6 +11,8 @@ public class LevelStats : MonoBehaviour
     [Tooltip("Время (с) для трёх и двух звёзд")]
     [SerializeField] private float threeStarTime = 90f;
     [SerializeField] private float twoStarTime = 150f;
+    [Tooltip("Брать нормативы звёзд из удалённого конфига")]
+    [SerializeField] private bool useRemoteConfig = true;
 
     public float ElapsedTime { get; private set; }
     public int CoinsCollected { get; private set; }
@@ -19,7 +21,10 @@ public class LevelStats : MonoBehaviour
     public int TotalBonuses { get; private set; }
     public bool IsFinished { get; private set; }
 
-    public int Stars => ElapsedTime <= threeStarTime ? 3 : ElapsedTime <= twoStarTime ? 2 : 1;
+    public float ThreeStarTime => useRemoteConfig ? RemoteConfig.Current.threeStarTime : threeStarTime;
+    public float TwoStarTime => useRemoteConfig ? RemoteConfig.Current.twoStarTime : twoStarTime;
+
+    public int Stars => ElapsedTime <= ThreeStarTime ? 3 : ElapsedTime <= TwoStarTime ? 2 : 1;
 
     public event Action Changed;
     public event Action Victory;

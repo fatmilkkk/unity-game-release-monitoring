@@ -21,6 +21,11 @@ public class MainMenuController : MonoBehaviour
 
     [SerializeField] private Text walletText;
 
+    [Header("Выпуск и обновления")]
+    [SerializeField] private Button whatsNewButton;
+    [SerializeField] private WhatsNewPanel whatsNewPanel;
+    [SerializeField] private ConsentPanel consentPanel;
+
     private static MainMenuController _instance;
     private bool _loading;
 
@@ -35,6 +40,15 @@ public class MainMenuController : MonoBehaviour
         if (quitButton != null) quitButton.onClick.AddListener(Quit);
         if (controlsBackButton != null) controlsBackButton.onClick.AddListener(Back);
         if (settingsBackButton != null) settingsBackButton.onClick.AddListener(Back);
+        if (whatsNewButton != null && whatsNewPanel != null) whatsNewButton.onClick.AddListener(whatsNewPanel.Open);
+        if (consentPanel != null) consentPanel.Answered += ShowWhatsNewIfUpdated;
+    }
+
+    /// <summary>После обновления игры один раз показываем «Что нового» (но не поверх запроса согласия).</summary>
+    private void ShowWhatsNewIfUpdated()
+    {
+        if (whatsNewPanel != null && WhatsNewPanel.HasUnseenUpdate && !whatsNewPanel.IsOpen)
+            whatsNewPanel.Open();
     }
 
     private void OnDestroy()
@@ -50,13 +64,19 @@ public class MainMenuController : MonoBehaviour
             mainPanel.Show();
         if (fadeOverlay != null)
             StartCoroutine(Fade(1f, 0f, 0.5f));
+        if (consentPanel == null || !consentPanel.IsWaitingForAnswer)
+            Invoke(nameof(ShowWhatsNewIfUpdated), 0.8f);
     }
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Escape) &&
-            ((controlsPanel != null && controlsPanel.IsOpen) || (settingsPanel != null && settingsPanel.IsOpen)))
-            Back();
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            if (whatsNewPanel != null && whatsNewPanel.IsOpen)
+                whatsNewPanel.Close();
+            else if ((controlsPanel != null && controlsPanel.IsOpen) || (settingsPanel != null && settingsPanel.IsOpen))
+                Back();
+        }
     }
 
     public static void RefreshWalletLabel()

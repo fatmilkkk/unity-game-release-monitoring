@@ -20,7 +20,7 @@ public static partial class DemoSceneBuilder
     public const string MenuScenePath = "Assets/Scenes/MainMenu.unity";
 
     /// <summary>Версия сборки сцен. При увеличении сцены пересобираются автоматически.</summary>
-    public const int BuildVersion = 3;
+    public const int BuildVersion = 4;
     public const string BuildVersionFile = "Library/PortfolioDemoBuildVersion.txt";
 
     private const string MaterialsFolder = "Assets/Materials";
@@ -109,6 +109,10 @@ public static partial class DemoSceneBuilder
         SetRef(cheats, "health", health);
         SetRef(cheats, "inventory", inventory);
         SetRef(cheats, "wallet", wallet);
+        var gameplayAnalytics = statsGo.AddComponent<GameplayAnalytics>();
+        SetRef(gameplayAnalytics, "health", health);
+        SetRef(gameplayAnalytics, "stats", stats);
+        SetRef(gameplayAnalytics, "inventory", inventory);
         var prewarmer = statsGo.AddComponent<EffectPrewarmer>();
         SetPrewarm(prewarmer, new[] { coinFx, explosionFx, deathFx }, new[] { 6, 4, 1 });
 
@@ -274,6 +278,8 @@ public static partial class DemoSceneBuilder
     {
         PlayerSettings.companyName = "Portfolio";
         PlayerSettings.productName = "Ball Collector";
+        if (VersionUtil.Compare(PlayerSettings.bundleVersion, ReleaseBuildTool.ReleaseVersion) < 0)
+            PlayerSettings.bundleVersion = ReleaseBuildTool.ReleaseVersion;
         PlayerSettings.defaultScreenWidth = 1920;
         PlayerSettings.defaultScreenHeight = 1080;
         PlayerSettings.fullScreenMode = FullScreenMode.FullScreenWindow;

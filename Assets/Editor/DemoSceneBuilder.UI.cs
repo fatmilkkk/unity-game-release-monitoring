@@ -478,6 +478,7 @@ public static partial class DemoSceneBuilder
         SetBool(fullscreenPlatform, "hideOnMobile", true);
         Toggle hints = NewToggle(sprites, window, "Показывать подсказки", new Vector2(left, -400f), new Vector2(540f, 50f));
         Toggle touch = NewToggle(sprites, window, "Сенсорное управление", new Vector2(left, -465f), new Vector2(540f, 50f));
+        Toggle analytics = NewToggle(sprites, window, "Анонимная статистика", new Vector2(left, -530f), new Vector2(540f, 50f));
 
         // Правая колонка: графика и производительность
         NewText("GraphicsHeader", window, "Графика и производительность", 30, TextAnchor.MiddleCenter,
@@ -490,7 +491,7 @@ public static partial class DemoSceneBuilder
         Toggle showFps = NewToggle(sprites, window, "Показывать FPS (F1)", new Vector2(right, -450f), new Vector2(540f, 50f));
 
         Button reset = NewButton(sprites, window, "Обнулить кошелёк", new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f),
-            new Vector2(0f, -575f), new Vector2(460f, 66f), new Color(0.45f, 0.2f, 0.2f), 26);
+            new Vector2(right, -530f), new Vector2(540f, 60f), new Color(0.45f, 0.2f, 0.2f), 26);
 
         backButton = NewButton(sprites, window, "Назад", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
             new Vector2(0f, 35f), new Vector2(320f, 80f));
@@ -509,6 +510,7 @@ public static partial class DemoSceneBuilder
         SetRef(settings, "autoQualityToggle", autoQuality);
         SetRef(settings, "showFpsToggle", showFps);
         SetRef(settings, "touchToggle", touch);
+        SetRef(settings, "analyticsToggle", analytics);
         return panel;
     }
 
@@ -677,12 +679,12 @@ public static partial class DemoSceneBuilder
         SetRef(coinFly, "coinSprite", sprites.Circle);
 
         // ── Окно паузы
-        UIPanel pause = NewWindow(sprites, root, "PausePanel", "Пауза", new Vector2(560f, 760f),
+        UIPanel pause = NewWindow(sprites, root, "PausePanel", "Пауза", new Vector2(560f, 860f),
             UIPanel.AnimationType.FadeScale, out RectTransform pauseWindow);
         RectTransform pauseButtons = NewRect("Buttons", pauseWindow, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-            new Vector2(0f, -140f), new Vector2(440f, 580f));
+            new Vector2(0f, -140f), new Vector2(440f, 680f));
         pauseButtons.gameObject.AddComponent<UIStaggerReveal>();
-        string[] pauseLabels = { "Продолжить", "Инвентарь", "Управление", "Настройки", "Заново", "Главное меню" };
+        string[] pauseLabels = { "Продолжить", "Инвентарь", "Управление", "Настройки", "Оставить отзыв", "Заново", "Главное меню" };
         var pauseBtns = new Button[pauseLabels.Length];
         for (int i = 0; i < pauseLabels.Length; i++)
         {
@@ -748,6 +750,8 @@ public static partial class DemoSceneBuilder
             new Vector2(-15f, 40f), new Vector2(300f, 80f), AccentColor);
         Button goMenu = NewButton(sprites, goWindow, "В меню", new Vector2(0.5f, 0f), new Vector2(0f, 0f),
             new Vector2(15f, 40f), new Vector2(300f, 80f));
+        Button goFeedback = NewButton(sprites, goWindow, "Оставить отзыв", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+            new Vector2(0f, 135f), new Vector2(330f, 60f), new Color(0.3f, 0.3f, 0.4f), 24);
 
         // ── Победа
         UIPanel victory = NewWindow(sprites, root, "VictoryPanel", "Уровень пройден!", new Vector2(800f, 680f),
@@ -767,6 +771,11 @@ public static partial class DemoSceneBuilder
             new Vector2(-15f, 40f), new Vector2(300f, 80f), AccentColor);
         Button vMenu = NewButton(sprites, vWindow, "В меню", new Vector2(0.5f, 0f), new Vector2(0f, 0f),
             new Vector2(15f, 40f), new Vector2(300f, 80f));
+        Button vFeedback = NewButton(sprites, vWindow, "Оставить отзыв", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+            new Vector2(0f, 135f), new Vector2(330f, 60f), new Color(0.3f, 0.3f, 0.4f), 24);
+
+        // ── Окно отзыва
+        FeedbackPanel feedback = CreateFeedbackWindow(sprites, root);
 
         // ── Контроллер экранов
         var ui = canvas.gameObject.AddComponent<GameUIController>();
@@ -786,8 +795,9 @@ public static partial class DemoSceneBuilder
         SetRef(ui, "pauseInventoryButton", pauseBtns[1]);
         SetRef(ui, "pauseControlsButton", pauseBtns[2]);
         SetRef(ui, "pauseSettingsButton", pauseBtns[3]);
-        SetRef(ui, "pauseRestartButton", pauseBtns[4]);
-        SetRef(ui, "pauseMenuButton", pauseBtns[5]);
+        SetRef(ui, "pauseFeedbackButton", pauseBtns[4]);
+        SetRef(ui, "pauseRestartButton", pauseBtns[5]);
+        SetRef(ui, "pauseMenuButton", pauseBtns[6]);
         SetRef(ui, "inventoryCloseButton", invClose);
         SetRef(ui, "controlsBackButton", controlsBack);
         SetRef(ui, "settingsBackButton", settingsBack);
@@ -798,6 +808,9 @@ public static partial class DemoSceneBuilder
         SetRef(ui, "gameOverStatsText", goStats);
         SetRef(ui, "victoryStatsText", vStats);
         SetRefArray(ui, "victoryStars", stars);
+        SetRef(ui, "feedbackPanel", feedback);
+        SetRef(ui, "gameOverFeedbackButton", goFeedback);
+        SetRef(ui, "victoryFeedbackButton", vFeedback);
     }
 
     // ───────────────────────────── Главное меню ─────────────────────────────
@@ -869,12 +882,13 @@ public static partial class DemoSceneBuilder
         NewText("Subtitle", mainRoot, "Собери монеты • Найди бонусы • Не взорвись", 30, TextAnchor.MiddleLeft,
             new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(6f, -160f), new Vector2(700f, 50f), MutedText);
 
-        RectTransform buttons = NewRect("Buttons", mainRoot, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -260f), new Vector2(460f, 440f));
+        RectTransform buttons = NewRect("Buttons", mainRoot, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -260f), new Vector2(460f, 540f));
         buttons.gameObject.AddComponent<UIStaggerReveal>();
         Button play = NewButton(sprites, buttons, "Играть", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 0f), new Vector2(440f, 96f), AccentColor, 40);
-        Button controlsBtn = NewButton(sprites, buttons, "Управление", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -115f), new Vector2(440f, 82f));
-        Button settingsBtn = NewButton(sprites, buttons, "Настройки", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -215f), new Vector2(440f, 82f));
-        Button quit = NewButton(sprites, buttons, "Выход", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -315f), new Vector2(440f, 82f), new Color(0.45f, 0.22f, 0.22f));
+        Button whatsNewBtn = NewButton(sprites, buttons, "Что нового", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -115f), new Vector2(440f, 82f));
+        Button controlsBtn = NewButton(sprites, buttons, "Управление", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -215f), new Vector2(440f, 82f));
+        Button settingsBtn = NewButton(sprites, buttons, "Настройки", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -315f), new Vector2(440f, 82f));
+        Button quit = NewButton(sprites, buttons, "Выход", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -415f), new Vector2(440f, 82f), new Color(0.45f, 0.22f, 0.22f));
         // В браузере и на iOS выход из приложения не поддерживается — кнопка скрывается
         var quitPlatform = quit.gameObject.AddComponent<PlatformVisibility>();
         SetBool(quitPlatform, "hideOnWebGL", true);
@@ -888,11 +902,16 @@ public static partial class DemoSceneBuilder
         Text walletText = NewText("WalletText", walletCard, "В кошельке: 0 мон.", 28, TextAnchor.MiddleLeft,
             new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(75f, 0f), new Vector2(350f, 60f), GoldColor, true);
 
-        NewText("Version", root, "Практика • Unity 2022.3 LTS • v1.1", 22, TextAnchor.LowerRight,
-            new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-30f, 25f), new Vector2(600f, 40f), MutedText);
+        Text version = NewText("Version", root, "Практика • Unity 2022.3 LTS", 22, TextAnchor.LowerRight,
+            new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-30f, 25f), new Vector2(700f, 40f), MutedText);
+        version.gameObject.AddComponent<VersionLabel>();
+
+        CreateNewsBanner(sprites, root);
 
         UIPanel controls = CreateControlsWindow(sprites, root, out Button controlsBack);
         UIPanel settings = CreateSettingsWindow(sprites, root, out Button settingsBack);
+        WhatsNewPanel whatsNew = CreateWhatsNewWindow(sprites, root);
+        ConsentPanel consent = CreateConsentWindow(sprites, root);
         CreateFpsCounter(sprites, root);
 
         RectTransform fade = NewStretch("FadeOverlay", root);
@@ -912,6 +931,172 @@ public static partial class DemoSceneBuilder
         SetRef(menu, "controlsBackButton", controlsBack);
         SetRef(menu, "settingsBackButton", settingsBack);
         SetRef(menu, "walletText", walletText);
+        SetRef(menu, "whatsNewButton", whatsNewBtn);
+        SetRef(menu, "whatsNewPanel", whatsNew);
+        SetRef(menu, "consentPanel", consent);
+    }
+
+    // ───────────────────────────── Окна выпуска и мониторинга ─────────────────────────────
+
+    private static FeedbackPanel CreateFeedbackWindow(UISprites sprites, Transform canvas)
+    {
+        UIPanel panel = NewWindow(sprites, canvas, "FeedbackPanel", "Ваш отзыв", new Vector2(980f, 880f),
+            UIPanel.AnimationType.SlideFromBottom, out RectTransform window, GoldColor);
+
+        NewText("RateLabel", window, "Как вам игра?", 30, TextAnchor.MiddleCenter,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(0f, -150f), new Vector2(800f, 44f), MutedText);
+
+        RectTransform starsRow = NewRect("Stars", window, new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f),
+            new Vector2(0f, -230f), new Vector2(600f, 100f));
+        var starsPunch = starsRow.gameObject.AddComponent<UIPunch>();
+        var starButtons = new Button[5];
+        var starImages = new Image[5];
+        for (int i = 0; i < 5; i++)
+        {
+            RectTransform starRt = NewRect("Star" + (i + 1), starsRow, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2((i - 2) * 115f, 0f), new Vector2(95f, 95f));
+            starImages[i] = AddImage(starRt, sprites.Star, new Color(1f, 1f, 1f, 0.2f), true);
+            starButtons[i] = starRt.gameObject.AddComponent<Button>();
+            starButtons[i].targetGraphic = starImages[i];
+            var nav = starButtons[i].navigation;
+            nav.mode = Navigation.Mode.None;
+            starButtons[i].navigation = nav;
+            ColorBlock colors = starButtons[i].colors;
+            colors.highlightedColor = new Color(1f, 1f, 0.85f);
+            starButtons[i].colors = colors;
+            starRt.gameObject.AddComponent<UIButtonFeedback>();
+        }
+
+        Button category = NewButton(sprites, window, "Тип: Отзыв", new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f),
+            new Vector2(0f, -325f), new Vector2(420f, 60f), null, 26);
+
+        // Многострочное поле ввода
+        GameObject inputGo = DefaultControls.CreateInputField(ControlResources(sprites));
+        inputGo.name = "FeedbackText";
+        SetLayerRecursive(inputGo, 5);
+        inputGo.transform.SetParent(window, false);
+        var inputRt = (RectTransform)inputGo.transform;
+        inputRt.anchorMin = inputRt.anchorMax = new Vector2(0.5f, 1f);
+        inputRt.pivot = new Vector2(0.5f, 1f);
+        inputRt.anchoredPosition = new Vector2(0f, -375f);
+        inputRt.sizeDelta = new Vector2(860f, 200f);
+        inputGo.GetComponent<Image>().color = new Color(0.16f, 0.19f, 0.25f);
+        var input = inputGo.GetComponent<InputField>();
+        input.lineType = InputField.LineType.MultiLineNewline;
+        input.characterLimit = 1000;
+        foreach (Text t in inputGo.GetComponentsInChildren<Text>(true))
+        {
+            bool placeholder = t.gameObject.name == "Placeholder";
+            StyleText(t, placeholder ? "Что понравилось, что мешало, какую ошибку нашли…" : "", 26,
+                TextAnchor.UpperLeft, placeholder ? new Color(1f, 1f, 1f, 0.35f) : Color.white, false);
+            if (placeholder) t.fontStyle = FontStyle.Italic;
+            var rt = t.rectTransform;
+            rt.offsetMin = new Vector2(16f, 12f);
+            rt.offsetMax = new Vector2(-16f, -12f);
+        }
+
+        Toggle tech = NewToggle(sprites, window, "Приложить техническую информацию (версия, устройство, ошибки)",
+            new Vector2(0f, -615f), new Vector2(860f, 46f));
+        Toggle github = NewToggle(sprites, window, "Открыть обращение на GitHub после отправки",
+            new Vector2(0f, -670f), new Vector2(860f, 46f));
+
+        Text status = NewText("Status", window, "", 24, TextAnchor.MiddleCenter,
+            new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 120f), new Vector2(800f, 36f), DangerColor);
+
+        Button send = NewButton(sprites, window, "Отправить", new Vector2(0.5f, 0f), new Vector2(1f, 0f),
+            new Vector2(-15f, 30f), new Vector2(300f, 80f), AccentColor);
+        Button cancel = NewButton(sprites, window, "Отмена", new Vector2(0.5f, 0f), new Vector2(0f, 0f),
+            new Vector2(15f, 30f), new Vector2(300f, 80f));
+
+        var feedback = panel.gameObject.AddComponent<FeedbackPanel>();
+        SetRef(feedback, "panel", panel);
+        SetRefArray(feedback, "starButtons", starButtons);
+        SetRefArray(feedback, "starImages", starImages);
+        SetRef(feedback, "categoryButton", category);
+        SetRef(feedback, "categoryLabel", category.GetComponentInChildren<Text>(true));
+        SetRef(feedback, "textInput", input);
+        SetRef(feedback, "techToggle", tech);
+        SetRef(feedback, "openGitHubToggle", github);
+        SetRef(feedback, "sendButton", send);
+        SetRef(feedback, "cancelButton", cancel);
+        SetRef(feedback, "statusText", status);
+        SetRef(feedback, "starsPunch", starsPunch);
+        return feedback;
+    }
+
+    private static WhatsNewPanel CreateWhatsNewWindow(UISprites sprites, Transform canvas)
+    {
+        UIPanel panel = NewWindow(sprites, canvas, "WhatsNewPanel", "Что нового", new Vector2(1000f, 780f),
+            UIPanel.AnimationType.FadeScale, out RectTransform window, GoldColor);
+        Text title = window.Find("Title").GetComponent<Text>();
+        Text body = NewText("Body", window, "", 26, TextAnchor.UpperLeft,
+            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -140f), new Vector2(880f, 500f), Color.white);
+        body.lineSpacing = 1.15f;
+        Button close = NewButton(sprites, window, "Отлично!", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+            new Vector2(0f, 35f), new Vector2(320f, 80f), AccentColor);
+
+        var whatsNew = panel.gameObject.AddComponent<WhatsNewPanel>();
+        SetRef(whatsNew, "panel", panel);
+        SetRef(whatsNew, "titleText", title);
+        SetRef(whatsNew, "bodyText", body);
+        SetRef(whatsNew, "closeButton", close);
+        return whatsNew;
+    }
+
+    private static ConsentPanel CreateConsentWindow(UISprites sprites, Transform canvas)
+    {
+        UIPanel panel = NewWindow(sprites, canvas, "ConsentPanel", "Помогите улучшить игру", new Vector2(980f, 640f),
+            UIPanel.AnimationType.FadeScale, out RectTransform window);
+        NewText("Text", window,
+            "Можно ли собирать анонимную статистику игры? Это помогает находить ошибки и настраивать сложность.\n\n" +
+            "Собирается: прохождение уровня, причины гибели, использование предметов, FPS, ошибки, модель устройства.\n" +
+            "Не собирается: имя, e-mail, местоположение и другие личные данные.\n\n" +
+            "Решение можно изменить в любой момент в настройках.",
+            26, TextAnchor.UpperLeft, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -140f),
+            new Vector2(880f, 320f), Color.white);
+
+        Button policy = NewButton(sprites, window, "Политика конфиденциальности", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+            new Vector2(0f, 130f), new Vector2(460f, 56f), new Color(0.25f, 0.28f, 0.36f), 22);
+        Button allow = NewButton(sprites, window, "Разрешить", new Vector2(0.5f, 0f), new Vector2(1f, 0f),
+            new Vector2(-15f, 35f), new Vector2(320f, 80f), AccentColor);
+        Button deny = NewButton(sprites, window, "Не сейчас", new Vector2(0.5f, 0f), new Vector2(0f, 0f),
+            new Vector2(15f, 35f), new Vector2(320f, 80f));
+
+        var consent = panel.gameObject.AddComponent<ConsentPanel>();
+        SetRef(consent, "panel", panel);
+        SetRef(consent, "allowButton", allow);
+        SetRef(consent, "denyButton", deny);
+        SetRef(consent, "policyButton", policy);
+        return consent;
+    }
+
+    /// <summary>Карточка новостей и обновлений в правом верхнем углу главного меню (данные из удалённого конфига).</summary>
+    private static void CreateNewsBanner(UISprites sprites, Transform canvas)
+    {
+        RectTransform root = NewRect("NewsBanner", canvas, new Vector2(1f, 1f), new Vector2(1f, 1f),
+            new Vector2(-30f, -30f), new Vector2(560f, 330f));
+
+        RectTransform news = NewRect("News", root, new Vector2(0f, 1f), new Vector2(0f, 1f), Vector2.zero, new Vector2(560f, 190f));
+        AddImage(news, sprites.Rounded, CardColor);
+        Text title = NewText("Title", news, "", 30, TextAnchor.UpperLeft,
+            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(24f, -16f), new Vector2(510f, 44f), GoldColor, true);
+        Text text = NewText("Text", news, "", 24, TextAnchor.UpperLeft,
+            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(24f, -64f), new Vector2(510f, 120f), Color.white);
+
+        RectTransform update = NewRect("Update", root, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, -205f), new Vector2(560f, 120f));
+        AddImage(update, sprites.Rounded, new Color(0.15f, 0.35f, 0.2f, 0.85f));
+        Text updateText = NewText("Text", update, "", 24, TextAnchor.MiddleLeft,
+            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(24f, -12f), new Vector2(510f, 44f), Color.white, true);
+        Button updateButton = NewButton(sprites, update, "Обновить", new Vector2(0f, 0f), new Vector2(0f, 0f),
+            new Vector2(24f, 12f), new Vector2(240f, 52f), GoodColor * new Color(0.8f, 0.8f, 0.8f, 1f), 24);
+
+        var banner = root.gameObject.AddComponent<NewsBanner>();
+        SetRef(banner, "newsRoot", news.gameObject);
+        SetRef(banner, "newsTitle", title);
+        SetRef(banner, "newsText", text);
+        SetRef(banner, "updateRoot", update.gameObject);
+        SetRef(banner, "updateText", updateText);
+        SetRef(banner, "updateButton", updateButton);
     }
 
     // ───────────────────────────── Массивы в сериализованных полях ─────────────────────────────

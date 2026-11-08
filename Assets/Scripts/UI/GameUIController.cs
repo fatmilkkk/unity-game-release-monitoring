@@ -25,6 +25,7 @@ public class GameUIController : MonoBehaviour
     [SerializeField] private UIPanel gameOverPanel;
     [SerializeField] private UIPanel victoryPanel;
     [SerializeField] private GameObject hintsRoot;
+    [SerializeField] private FeedbackPanel feedbackPanel;
 
     [Header("Кнопки HUD")]
     [SerializeField] private Button hudPauseButton;
@@ -37,6 +38,11 @@ public class GameUIController : MonoBehaviour
     [SerializeField] private Button pauseSettingsButton;
     [SerializeField] private Button pauseRestartButton;
     [SerializeField] private Button pauseMenuButton;
+
+    [Header("Отзывы")]
+    [SerializeField] private Button pauseFeedbackButton;
+    [SerializeField] private Button gameOverFeedbackButton;
+    [SerializeField] private Button victoryFeedbackButton;
 
     [Header("Прочие кнопки")]
     [SerializeField] private Button inventoryCloseButton;
@@ -80,6 +86,18 @@ public class GameUIController : MonoBehaviour
         Bind(gameOverMenuButton, GoToMainMenu);
         Bind(victoryRestartButton, RestartLevel);
         Bind(victoryMenuButton, GoToMainMenu);
+
+        Bind(pauseFeedbackButton, () => OpenFeedback(pausePanel));
+        Bind(gameOverFeedbackButton, () => OpenFeedback(gameOverPanel));
+        Bind(victoryFeedbackButton, () => OpenFeedback(victoryPanel));
+    }
+
+    /// <summary>Открыть окно отзыва поверх экрана returnTo и вернуться на него после закрытия.</summary>
+    private void OpenFeedback(UIPanel returnTo)
+    {
+        if (feedbackPanel == null) return;
+        returnTo?.Hide();
+        feedbackPanel.Open(() => returnTo?.Show());
     }
 
     private static void Bind(Button button, UnityEngine.Events.UnityAction action)
@@ -134,6 +152,14 @@ public class GameUIController : MonoBehaviour
 
     private void Update()
     {
+        // Пока игрок пишет отзыв, игровые клавиши (I, Tab, цифры) не обрабатываются
+        if (feedbackPanel != null && feedbackPanel.IsOpen)
+        {
+            if (Input.GetKeyDown(KeyCode.Escape))
+                feedbackPanel.Close();
+            return;
+        }
+
         if (_gameEnded)
             return;
 

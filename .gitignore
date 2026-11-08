@@ -35,3 +35,6 @@ Thumbs.db
 *.aab
 *.unitypackage
 crashlytics-build.properties
+
+# Analytics imports and demo data (local only)
+/AnalyticsData/

@@ -51,7 +51,7 @@ public class DebugCheats : MonoBehaviour
         }
         else if (Input.GetKeyDown(KeyCode.F5) && health != null)
         {
-            health.Kill(true);
+            health.Kill(true, "debug");
             Log("игрок уничтожен");
         }
         else if (Input.GetKeyDown(KeyCode.F6) && wallet != null)

@@ -1,11 +1,9 @@
-# Unity Portfolio Game — «Шар-собиратель» (тестирование и оптимизация)
+# Unity Portfolio Game — «Шар-собиратель» (выпуск и мониторинг)
 
-> Версия проекта для кейс-задачи № 4: автотесты, исправление ошибок, оптимизация и адаптация под устройства.
-> Подробный отчёт: [`Docs/Case4_Testing_Optimization.md`](Docs/Case4_Testing_Optimization.md).
-
-Небольшой 3D-проект для портфолио: игрок управляет шаром, собирает монеты в кошелёк,
-активирует бонусы, уворачивается от подвижных препятствий и старается не врезаться
-на скорости в бочки со взрывчаткой.
+> Версия проекта для кейс-задачи № 5: подготовка к релизу на Windows / Android / WebGL,
+> аналитика, сбор ошибок и отзывов, удалённый конфиг и обновление по обратной связи.
+> Анализ: [`Docs/Case5_Release_Monitoring.md`](Docs/Case5_Release_Monitoring.md) •
+> релизные документы: [`Docs/Release/`](Docs/Release/)
 
 **Движок:** Unity 2022.3 LTS (Built-in Render Pipeline)
 **Пакеты:** Cinemachine 2.10, Unity UI, Unity Test Framework
@@ -100,7 +98,7 @@
 - Подробный анализ: [`Docs/Case3_UI_Analysis.md`](Docs/Case3_UI_Analysis.md).
 
 ### 7. Тестирование и оптимизация (кейс-задача № 4)
-- **Автотесты:** 25 EditMode + 17 PlayMode (Window → General → Test Runner). Игровой код вынесен в сборку `PortfolioGame.asmdef`.
+- **Автотесты:** 25 EditMode + 17 PlayMode (в версии 1.2.0 — ещё 29 тестов сервисов выпуска, всего 71) (Window → General → Test Runner). Игровой код вынесен в сборку `PortfolioGame.asmdef`.
 - **Отладочные клавиши** (редактор и Development Build): F1 — FPS, F2 — предметы, F3 — лечение, F4 — монеты,
   F5 — гибель, F6 — победа, F7 — бессмертие, F8 — замедление.
 - **Оптимизация:** пул эффектов и UI-значков, отсутствие аллокаций в Update HUD, кэширование компонентов,
@@ -109,12 +107,27 @@
 - **Адаптация:** Safe Area для смартфонов с вырезами, сенсорный джойстик и кнопка прыжка, альбомная ориентация,
   скрытие неподдерживаемых элементов на WebGL/iOS/мобильных.
 
+### 8. Выпуск и мониторинг (кейс-задача № 5)
+- **Сборка релиза:** Tools → Release → Build Windows / Android (APK, AAB) / WebGL / All. Номер сборки,
+  `Resources/build_info.json` (версия, дата, коммит), отчёты `Builds/<платформа>/build_report.txt` и `Builds/build_history.csv`.
+- **CI:** `.github/workflows/build.yml` (GameCI) — тесты и сборка всех платформ по тегу `vX.Y.Z`, GitHub Release.
+- **Аналитика** (с согласием игрока): сессии, прохождение, воронка, причины и места гибели, предметы, FPS.
+- **Ошибки:** перехват исключений с дедупликацией.
+- **Отзывы:** окно в паузе и на экранах конца уровня → GitHub Issues; шаблоны обращений в `.github/ISSUE_TEMPLATE`.
+- **Анализ:** Tools → Release → Analytics Dashboard — метрики, воронка, тепловая карта гибелей в окне Scene,
+  рекомендации для обновления, экспорт отчёта.
+- **Удалённый конфиг** `Config/remote_config.json`: баланс, новости, уведомление о новой версии — без пересборки игры.
+- **Меню:** «Что нового», карточка новостей, уведомление об обновлении, версия сборки.
+- Документы: чек-лист релиза, материалы для магазинов, политика конфиденциальности, журнал изменений, процесс Live Ops.
+
 ## Структура
 
 ```
 Assets/
   Editor/DemoSceneBuilder.cs     — сборка сцен, префабов, анимаций, частиц
   Editor/DemoSceneBuilder.UI.cs  — сборка интерфейса (меню, HUD, окна)
+  Editor/Release/                — ReleaseBuildTool (сборка платформ), AnalyticsDashboardWindow (анализ статистики)
+  Resources/                     — build_info.json, changelog.txt («Что нового»)
   Scripts/
     Core/        GamePause, GameSettings, EffectPool, PhysicsLayers, AdaptiveQuality, DebugCheats, MobileInput
     Player/      PlayerController, PlayerHealth
@@ -129,8 +142,11 @@ Assets/
     UI/Core/     UIPanel, UIButtonFeedback, UIStaggerReveal, UIFloatAnimation, UIPunch, UIEasing, UISound
     UI/Inventory/InventoryUI, InventorySlotUI, HotbarUI
     UI/Touch/    VirtualJoystick, TouchControlsUI
+    LiveOps/     AnalyticsService, AnalyticsAggregator, CrashReporter, FeedbackService, RemoteConfig,
+                 BuildInfo, VersionUtil, GameplayAnalytics, LiveOpsHost
+    UI/LiveOps/  ConsentPanel, FeedbackPanel, WhatsNewPanel, NewsBanner, VersionLabel
     UI/          FpsCounterUI, SafeAreaFitter, PlatformVisibility
   Tests/
-    EditMode/    LogicTests — модульные тесты логики
+    EditMode/    LogicTests, LiveOpsTests — модульные тесты логики и сервисов выпуска
     PlayMode/    GameplayTests — тесты механик с физикой
 ```

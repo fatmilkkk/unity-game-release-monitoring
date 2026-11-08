@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Политика конфиденциальности
+    url: https://github.com/fatmilkkk/unity-game-release-monitoring/blob/main/Docs/Release/PRIVACY_POLICY.md
+    about: Какие данные собирает игра и как их удалить

@@ -1,0 +1,44 @@
+name: Сообщить об ошибке
+description: Что-то работает неправильно
+title: "[Ошибка] "
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Версия игры
+      description: Указана в правом нижнем углу главного меню (например, v1.2.0 (сборка 3))
+      placeholder: v1.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Платформа
+      options:
+        - Windows
+        - Android
+        - Браузер (WebGL)
+        - Другое
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как воспроизвести
+      placeholder: |
+        1. Открыть уровень
+        2. Разогнаться и ...
+        3. Ошибка: ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Что ожидалось
+  - type: textarea
+    id: tech
+    attributes:
+      label: Техническая информация
+      description: Если отправляли отзыв из игры с флажком «Приложить техническую информацию» — она уже в тексте
+      render: text

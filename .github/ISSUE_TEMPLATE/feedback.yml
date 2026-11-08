@@ -1,0 +1,35 @@
+name: Отзыв или предложение
+description: Поделитесь впечатлениями или идеей
+title: "[Отзыв] "
+labels: ["feedback"]
+body:
+  - type: dropdown
+    id: rating
+    attributes:
+      label: Оценка
+      options:
+        - "★★★★★ — отлично"
+        - "★★★★☆ — хорошо"
+        - "★★★☆☆ — нормально"
+        - "★★☆☆☆ — плохо"
+        - "★☆☆☆☆ — очень плохо"
+    validations:
+      required: true
+  - type: dropdown
+    id: topic
+    attributes:
+      label: О чём отзыв
+      multiple: true
+      options:
+        - Сложность
+        - Управление
+        - Интерфейс
+        - Графика и производительность
+        - Идея новой механики
+        - Другое
+  - type: textarea
+    id: text
+    attributes:
+      label: Отзыв
+    validations:
+      required: true

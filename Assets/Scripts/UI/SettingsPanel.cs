@@ -23,6 +23,9 @@ public class SettingsPanel : MonoBehaviour
     [SerializeField] private Toggle showFpsToggle;
     [SerializeField] private Toggle touchToggle;
 
+    [Header("Конфиденциальность")]
+    [SerializeField] private Toggle analyticsToggle;
+
     private bool _updating;
     private bool _listenersAdded;
     private float _resetConfirmUntil;
@@ -52,6 +55,17 @@ public class SettingsPanel : MonoBehaviour
         if (autoQualityToggle != null) autoQualityToggle.onValueChanged.AddListener(v => { if (!_updating) GameSettings.SetAutoQuality(v); });
         if (showFpsToggle != null) showFpsToggle.onValueChanged.AddListener(v => { if (!_updating) GameSettings.SetShowFps(v); });
         if (touchToggle != null) touchToggle.onValueChanged.AddListener(v => { if (!_updating) GameSettings.SetTouchControls(v); });
+        if (analyticsToggle != null)
+            analyticsToggle.onValueChanged.AddListener(v =>
+            {
+                if (_updating) return;
+                AnalyticsService.SetConsent(v);
+                if (!v)
+                {
+                    AnalyticsService.DeleteLocalData(); // отказ = удаление уже собранных данных
+                    ToastUI.Show("Статистика отключена, локальные данные удалены", new Color(0.7f, 0.8f, 1f));
+                }
+            });
     }
 
     private void UpdateCycleLabels()
@@ -72,6 +86,7 @@ public class SettingsPanel : MonoBehaviour
         if (autoQualityToggle != null) autoQualityToggle.isOn = GameSettings.AutoQuality;
         if (showFpsToggle != null) showFpsToggle.isOn = GameSettings.ShowFps;
         if (touchToggle != null) touchToggle.isOn = GameSettings.TouchControls;
+        if (analyticsToggle != null) analyticsToggle.isOn = AnalyticsService.IsEnabled;
         _updating = false;
         UpdateCycleLabels();
         UpdateVolumeLabel();

@@ -12,6 +12,8 @@ public class ExplosiveBarrel : MonoBehaviour
     [Header("Порог срабатывания")]
     [Tooltip("Минимальная относительная скорость удара игрока (м/с), при которой бочка взрывается")]
     [SerializeField] private float explodeImpactSpeed = 7f;
+    [Tooltip("Брать порог из удалённого конфига (barrelExplodeSpeed) — для балансировки без обновления игры")]
+    [SerializeField] private bool useRemoteConfig = true;
 
     [Header("Взрыв")]
     [SerializeField] private float explosionRadius = 5f;
@@ -25,7 +27,7 @@ public class ExplosiveBarrel : MonoBehaviour
 
     private bool _exploded;
 
-    public float ExplodeImpactSpeed => explodeImpactSpeed;
+    public float ExplodeImpactSpeed => useRemoteConfig ? RemoteConfig.Current.barrelExplodeSpeed : explodeImpactSpeed;
     public bool HasExploded => _exploded;
 
     private void OnCollisionEnter(Collision collision)
@@ -38,7 +40,7 @@ public class ExplosiveBarrel : MonoBehaviour
             return;
 
         float impactSpeed = collision.relativeVelocity.magnitude;
-        if (impactSpeed >= explodeImpactSpeed)
+        if (impactSpeed >= ExplodeImpactSpeed)
             Explode(player);
     }
 
@@ -67,11 +69,11 @@ public class ExplosiveBarrel : MonoBehaviour
 
             var health = hit.GetComponentInParent<PlayerHealth>();
             if (health != null && health != directHit)
-                health.TakeDamage(splashDamage);
+                health.TakeDamage(splashDamage, "barrel_splash");
         }
 
         if (directHit != null)
-            directHit.Kill();
+            directHit.Kill(false, "barrel");
 
         Destroy(gameObject);
     }
